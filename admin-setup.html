@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gestione Ruoli Admin</title>
+    <style>
+        body { font-family: Arial; padding: 20px; }
+        table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+        th, td { padding: 10px; border: 1px solid #ddd; text-align: left; }
+        select { padding: 5px; }
+        .admin-btn { background: #7209b7; color: white; padding: 8px 15px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <h1>Gestione Ruoli Utenti</h1>
+    
+    <div id="users-list"></div>
+    
+    <!-- Firebase -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    
+    <script>
+        async function loadUsers() {
+            try {
+                const snapshot = await firebase.firestore().collection('users').get();
+                let html = '<table><tr><th>Email</th><th>Nome</th><th>Ruolo Attuale</th><th>Cambia Ruolo</th><th>Azioni</th></tr>';
+                
+                snapshot.forEach(doc => {
+                    const user = doc.data();
+                    html += `
+                        <tr>
+                            <td>${user.email}</td>
+                            <td>${user.displayName}</td>
+                            <td>${user.role || 'employee'}</td>
+                            <td>
+                                <select id="role-${doc.id}">
+                                    <option value="employee" ${user.role === 'employee' ? 'selected' : ''}>Dipendente</option>
+                                    <option value="admin" ${user.role === 'admin' ? 'selected' : ''}>Amministratore</option>
+                                </select>
+                            </td>
+                            <td>
+                                <button class="admin-btn" onclick="updateRole('${doc.id}')">Aggiorna</button>
+                            </td>
+                        </tr>
+                    `;
+                });
+                
+                html += '</table>';
+                document.getElementById('users-list').innerHTML = html;
+                
+            } catch (error) {
+                console.error('Errore caricamento utenti:', error);
+            }
+        }
+        
+        async function updateRole(userId) {
+            const newRole = document.getElementById(`role-${userId}`).value;
+            
+            try {
+                await firebase.firestore().collection('users').doc(userId).update({
+                    role: newRole
+                });
+                
+                alert(`Ruolo aggiornato a: ${newRole}`);
+                loadUsers(); // Ricarica la lista
+                
+            } catch (error) {
+                console.error('Errore aggiornamento ruolo:', error);
+                alert('Errore aggiornamento ruolo');
+            }
+        }
+        
+        // Carica utenti all'avvio
+        document.addEventListener('DOMContentLoaded', loadUsers);
+    </script>
+</body>
+</html>

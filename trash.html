@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cestino Personale - Task Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="dashboard.html" class="sidebar-logo">
+                    <i class="fas fa-tasks"></i>
+                    <h2>Task Manager</h2>
+                </a>
+            </div>
+            
+            <div class="sidebar-user" id="sidebar-user">
+                <!-- Popolato dinamicamente -->
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="my-tasks.html" class="nav-item">
+                    <i class="fas fa-list-check"></i>
+                    <span>Le Mie Task</span>
+                </a>
+                <a href="add-task.html" class="nav-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Aggiungi Task</span>
+                </a>
+                <a href="trash.html" class="nav-item active">
+                    <i class="fas fa-trash-can"></i>
+                    <span>Cestino Personale</span>
+                </a>
+                <a href="profile.html" class="nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profilo & Statistiche</span>
+                </a>
+                
+                <!-- Admin Links (visibili solo agli admin) -->
+                <div id="admin-links" style="display: none;">
+                    <div class="nav-divider">
+                        <span>Amministrazione</span>
+                    </div>
+                    <a href="admin-dashboard.html" class="nav-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard Globale</span>
+                    </a>
+                    <a href="admin-trash.html" class="nav-item">
+                        <i class="fas fa-dumpster"></i>
+                        <span>Cestino Globale</span>
+                    </a>
+                    <a href="admin-stats.html" class="nav-item">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Statistiche Aziendali</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="header">
+                <h1>Cestino Personale</h1>
+                <div class="header-actions">
+                    <button class="btn btn-outline" onclick="window.location.href='dashboard.html'">
+                        <i class="fas fa-arrow-left"></i> Torna alla Dashboard
+                    </button>
+                    <button class="btn btn-outline" id="refresh-btn">
+                        <i class="fas fa-sync-alt"></i> Aggiorna
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Task eliminate da te</h2>
+                    <p>Qui puoi ripristinare o eliminare definitivamente le task</p>
+                </div>
+                
+                <!-- Filtri -->
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="search">Cerca</label>
+                        <input type="text" id="search" placeholder="Cerca nelle task eliminate...">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="priority-filter">Priorità</label>
+                        <select id="priority-filter">
+                            <option value="all">Tutte le priorità</option>
+                            <option value="critical">Critica</option>
+                            <option value="high">Alta</option>
+                            <option value="medium">Media</option>
+                            <option value="low">Bassa</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="status-filter">Stato</label>
+                        <select id="status-filter">
+                            <option value="all">Tutti gli stati</option>
+                            <option value="pending">In attesa</option>
+                            <option value="in-progress">In corso</option>
+                            <option value="completed">Completate</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="sort-by">Ordina per</label>
+                        <select id="sort-by">
+                            <option value="deletedAt">Data eliminazione (recente)</option>
+                            <option value="dueDate">Scadenza</option>
+                            <option value="priority">Priorità</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Tasks Container -->
+                <div id="tasks-container">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Modal Conferma Ripristino -->
+    <div class="modal" id="confirm-restore-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Conferma Ripristino</h3>
+                <button class="modal-close" id="close-restore-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Sei sicuro di voler ripristinare questa task?</p>
+                <p><small>La task tornerà visibile nella dashboard.</small></p>
+                
+                <div class="modal-actions">
+                    <button class="btn btn-primary" id="confirm-restore-btn">Sì, ripristina</button>
+                    <button class="btn btn-outline" id="cancel-restore-btn">Annulla</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Modal Conferma Eliminazione Definitiva -->
+    <div class="modal" id="confirm-permanent-delete-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Conferma Eliminazione Definitiva</h3>
+                <button class="modal-close" id="close-permanent-delete-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>ATTENZIONE:</strong> Stai per eliminare definitivamente questa task.</p>
+                <p>Questa azione è irreversibile e la task non potrà più essere recuperata.</p>
+                
+                <div class="modal-actions">
+                    <button class="btn btn-danger" id="confirm-permanent-delete-btn">Elimina definitivamente</button>
+                    <button class="btn btn-outline" id="cancel-permanent-delete-btn">Annulla</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        let currentUser = null;
+        let deletedTasks = [];
+        let taskToRestore = null;
+        let taskToDeletePermanently = null;
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const authResult = await checkAuth();
+                currentUser = authResult.user;
+                
+                displayUserInfo();
+                await loadDeletedTasks();
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('Errore inizializzazione:', error);
+                window.location.href = 'index.html';
+            }
+        });
+        
+        async function loadDeletedTasks() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userEmail = user.email || '';
+            
+            try {
+                deletedTasks = await loadDeletedTasks(userEmail);
+                renderTasks();
+                
+            } catch (error) {
+                console.error('Errore caricamento task eliminate:', error);
+                showNotification('Errore nel caricamento del cestino', 'error');
+            }
+        }
+        
+        function renderTasks() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userEmail = user.email || '';
+            
+            // Ottieni valori filtri
+            const filters = {
+                search: document.getElementById('search')?.value.toLowerCase() || '',
+                priority: document.getElementById('priority-filter')?.value || 'all',
+                status: document.getElementById('status-filter')?.value || 'all'
+            };
+            
+            const sortBy = document.getElementById('sort-by')?.value || 'deletedAt';
+            
+            // Filtra task
+            let filteredTasks = filterTasks(deletedTasks, filters);
+            
+            // Ordina in modo speciale per deletedAt
+            if (sortBy === 'deletedAt') {
+                filteredTasks.sort((a, b) => {
+                    return (b.deletedAt?.seconds || 0) - (a.deletedAt?.seconds || 0);
+                });
+            } else {
+                filteredTasks = sortTasks(filteredTasks, sortBy);
+            }
+            
+            const tasksContainer = document.getElementById('tasks-container');
+            if (!tasksContainer) return;
+            
+            if (filteredTasks.length === 0) {
+                tasksContainer.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-trash-can"></i>
+                        <h3>Cestino vuoto</h3>
+                        <p>Non ci sono task eliminate</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = `
+                <div class="table-container">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Titolo</th>
+                                <th>Assegnata a</th>
+                                <th>Priorità</th>
+                                <th>Stato</th>
+                                <th>Eliminata il</th>
+                                <th>Azioni</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+            `;
+            
+            filteredTasks.forEach(task => {
+                const deletedDate = task.deletedAt ? formatFullDate(task.deletedAt) : 'N/A';
+                
+                html += `
+                    <tr>
+                        <td>
+                            <strong>${task.title}</strong>
+                            <br>
+                            <small class="text-muted">${task.description.substring(0, 60)}${task.description.length > 60 ? '...' : ''}</small>
+                        </td>
+                        <td>${task.assignedTo}</td>
+                        <td>${getPriorityBadge(task.priority)}</td>
+                        <td>${getStatusBadge(task.status)}</td>
+                        <td>${deletedDate}</td>
+                        <td>
+                            <div class="action-buttons">
+                                <button class="btn btn-icon btn-restore restore-task" data-id="${task.id}" title="Ripristina">
+                                    <i class="fas fa-rotate-left"></i>
+                                </button>
+                                <button class="btn btn-icon btn-delete permanent-delete-task" data-id="${task.id}" title="Elimina definitivamente">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            tasksContainer.innerHTML = html;
+            
+            // Aggiungi event listeners ai bottoni
+            attachTaskButtonsListeners();
+        }
+        
+        function setupEventListeners() {
+            // Logout
+            document.getElementById('logout-btn')?.addEventListener('click', logoutUser);
+            
+            // Refresh
+            document.getElementById('refresh-btn')?.addEventListener('click', async () => {
+                showNotification('Aggiornamento in corso...', 'info');
+                await loadDeletedTasks();
+            });
+            
+            // Filtri
+            const filterElements = [
+                'search', 'priority-filter', 'status-filter', 'sort-by'
+            ];
+            
+            filterElements.forEach(id => {
+                const element = document.getElementById(id);
+                if (element) {
+                    element.addEventListener('change', renderTasks);
+                }
+            });
+            
+            // Search con debounce
+            const searchInput = document.getElementById('search');
+            if (searchInput) {
+                let searchTimeout;
+                searchInput.addEventListener('input', () => {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(renderTasks, 300);
+                });
+            }
+            
+            // Modali
+            setupModals();
+        }
+        
+        function setupModals() {
+            // Ripristino
+            const restoreModal = document.getElementById('confirm-restore-modal');
+            const closeRestoreModal = document.getElementById('close-restore-modal');
+            const cancelRestore = document.getElementById('cancel-restore-btn');
+            
+            if (closeRestoreModal) {
+                closeRestoreModal.addEventListener('click', () => {
+                    restoreModal.classList.remove('show');
+                    taskToRestore = null;
+                });
+            }
+            
+            if (cancelRestore) {
+                cancelRestore.addEventListener('click', () => {
+                    restoreModal.classList.remove('show');
+                    taskToRestore = null;
+                });
+            }
+            
+            document.getElementById('confirm-restore-btn')?.addEventListener('click', async () => {
+                if (taskToRestore) {
+                    await restoreTask(taskToRestore);
+                    restoreModal.classList.remove('show');
+                    taskToRestore = null;
+                    await loadDeletedTasks();
+                }
+            });
+            
+            // Eliminazione definitiva
+            const deleteModal = document.getElementById('confirm-permanent-delete-modal');
+            const closeDeleteModal = document.getElementById('close-permanent-delete-modal');
+            const cancelDelete = document.getElementById('cancel-permanent-delete-btn');
+            
+            if (closeDeleteModal) {
+                closeDeleteModal.addEventListener('click', () => {
+                    deleteModal.classList.remove('show');
+                    taskToDeletePermanently = null;
+                });
+            }
+            
+            if (cancelDelete) {
+                cancelDelete.addEventListener('click', () => {
+                    deleteModal.classList.remove('show');
+                    taskToDeletePermanently = null;
+                });
+            }
+            
+            document.getElementById('confirm-permanent-delete-btn')?.addEventListener('click', async () => {
+                if (taskToDeletePermanently) {
+                    await permanentlyDeleteTask(taskToDeletePermanently);
+                    deleteModal.classList.remove('show');
+                    taskToDeletePermanently = null;
+                    await loadDeletedTasks();
+                }
+            });
+            
+            // Chiudi modali cliccando fuori
+            window.addEventListener('click', (e) => {
+                if (e.target.classList.contains('modal')) {
+                    e.target.classList.remove('show');
+                    taskToRestore = null;
+                    taskToDeletePermanently = null;
+                }
+            });
+        }
+        
+        function attachTaskButtonsListeners() {
+            // Ripristina task
+            document.querySelectorAll('.restore-task').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    taskToRestore = e.currentTarget.dataset.id;
+                    document.getElementById('confirm-restore-modal').classList.add('show');
+                });
+            });
+            
+            // Elimina definitivamente task
+            document.querySelectorAll('.permanent-delete-task').forEach(button => {
+                button.addEventListener('click', (e) => {
+                    taskToDeletePermanently = e.currentTarget.dataset.id;
+                    document.getElementById('confirm-permanent-delete-modal').classList.add('show');
+                });
+            });
+        }
+        
+        function displayUserInfo() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userEmail = user.email || '';
+            const userName = user.displayName || userEmail.split('@')[0];
+            const userRole = user.role || 'employee';
+            
+            const sidebarUser = document.getElementById('sidebar-user');
+            if (sidebarUser) {
+                const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                
+                sidebarUser.innerHTML = `
+                    <div class="user-avatar">${initials}</div>
+                    <div class="user-info">
+                        <h4>${userName}</h4>
+                        <p>${userEmail}</p>
+                        <span class="user-role ${userRole}">${userRole === 'admin' ? 'Amministratore' : 'Dipendente'}</span>
+                    </div>
+                `;
+            }
+            
+            if (userRole === 'admin') {
+                const adminLinks = document.getElementById('admin-links');
+                if (adminLinks) {
+                    adminLinks.style.display = 'block';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

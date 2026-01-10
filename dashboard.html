@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Task Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="dashboard.html" class="sidebar-logo">
+                    <i class="fas fa-tasks"></i>
+                    <h2>Task Manager</h2>
+                </a>
+            </div>
+            
+            <div class="sidebar-user" id="sidebar-user">
+                <!-- Popolato dinamicamente -->
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item active">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="my-tasks.html" class="nav-item">
+                    <i class="fas fa-list-check"></i>
+                    <span>Le Mie Task</span>
+                </a>
+                <a href="add-task.html" class="nav-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Aggiungi Task</span>
+                </a>
+                <a href="trash.html" class="nav-item">
+                    <i class="fas fa-trash-can"></i>
+                    <span>Cestino Personale</span>
+                </a>
+                <a href="profile.html" class="nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profilo & Statistiche</span>
+                </a>
+                
+                <!-- ⭐ Admin Links (visibili solo agli admin) -->
+                <div id="admin-links" style="display: none;">
+                    <div class="nav-divider">
+                        <span>Amministrazione</span>
+                    </div>
+                    <a href="admin-dashboard.html" class="nav-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard Globale</span>
+                    </a>
+                    <a href="admin-trash.html" class="nav-item">
+                        <i class="fas fa-dumpster"></i>
+                        <span>Cestino Globale</span>
+                    </a>
+                    <a href="admin-stats.html" class="nav-item">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Statistiche Aziendali</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="header">
+                <h1>Dashboard</h1>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="window.location.href='add-task.html'">
+                        <i class="fas fa-plus"></i> Nuova Task
+                    </button>
+                    <button class="btn btn-outline" id="refresh-btn">
+                        <i class="fas fa-sync-alt"></i> Aggiorna
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="stats-grid" id="stats-cards">
+                <!-- Popolato dinamicamente -->
+            </div>
+            
+            <!-- Filtri e Task -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Tutte le Task Aziendali</h2>
+                </div>
+                
+                <div class="filters">
+                    <div class="filter-group">
+                        <label for="search">Cerca</label>
+                        <input type="text" id="search" placeholder="Cerca task...">
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="priority-filter">Priorità</label>
+                        <select id="priority-filter">
+                            <option value="all">Tutte</option>
+                            <option value="critical">Critica</option>
+                            <option value="high">Alta</option>
+                            <option value="medium">Media</option>
+                            <option value="low">Bassa</option>
+                        </select>
+                    </div>
+                    
+                    <div class="filter-group">
+                        <label for="status-filter">Stato</label>
+                        <select id="status-filter">
+                            <option value="all">Tutti</option>
+                            <option value="pending">In attesa</option>
+                            <option value="in-progress">In corso</option>
+                            <option value="completed">Completate</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- Tasks Container -->
+                <div id="tasks-container">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/tasks.js"></script>
+    
+<script>
+    document.addEventListener('DOMContentLoaded', async function() {
+        console.log('🏁 Inizializzazione dashboard...');
+        
+        try {
+            // ⭐ Controlla autenticazione
+            let authResult;
+            try {
+                authResult = await checkAuth();
+            } catch (error) {
+                console.log('❌ Auth fallita');
+                // Non fare nulla, checkAuth ha già reindirizzato
+                return;
+            }
+            
+            const user = authResult.user;
+            const role = authResult.role;
+            
+            console.log('✅ Utente autenticato:', user.email, 'Ruolo:', role, 'Tab:', user.tabId);
+            
+            // ⭐ Mostra link admin solo se l'utente è admin
+            if (role === 'admin') {
+                document.getElementById('admin-links').style.display = 'block';
+            }
+            
+            // Inizializza dashboard
+            displayUserInfo(user, role);
+            await loadDashboardData(user.email, role);
+            setupEventListeners();
+            
+            console.log('✅ Dashboard inizializzata correttamente');
+            
+        } catch (error) {
+            console.error('❌ Errore inizializzazione dashboard:', error);
+            // Non reindirizzare qui, per evitare loop
+        }
+    });
+    
+    function displayUserInfo(user, role) {
+        const sidebarUser = document.getElementById('sidebar-user');
+        
+        if (sidebarUser && user.email) {
+            const initials = user.displayName 
+                ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                : user.email.substring(0, 2).toUpperCase();
+            
+            const roleText = role === 'admin' ? 'Amministratore' : 'Dipendente';
+            const roleClass = role === 'admin' ? 'admin' : 'employee';
+            
+            sidebarUser.innerHTML = `
+                <div class="user-avatar">${initials}</div>
+                <div class="user-info">
+                    <h4>${user.displayName || user.email.split('@')[0]}</h4>
+                    <p>${user.email}</p>
+                    <span class="user-role ${roleClass}">${roleText}</span>
+                    <small style="display: block; margin-top: 5px; font-size: 10px; opacity: 0.6;">Tab: ${user.tabId?.substring(0, 10)}...</small>
+                </div>
+            `;
+        }
+    }
+    
+    async function loadDashboardData(userEmail, userRole) {
+        try {
+            showNotification('Caricamento dati...', 'info');
+            
+            // ⭐ Carica task in base al ruolo
+            let tasksToShow;
+            
+            if (userRole === 'admin') {
+                // Admin vede TUTTE le task
+                tasksToShow = await loadAllTasks();
+            } else {
+                // Dipendente vede solo task assegnate o create
+                const allTasks = await loadAllTasks();
+                tasksToShow = allTasks.filter(task => 
+                    task.assignedTo === userEmail || task.createdBy === userEmail
+                );
+            }
+            
+            // Aggiorna statistiche
+            updateStats(tasksToShow, userEmail, userRole);
+            // Mostra task
+            displayTasks(tasksToShow, userEmail, userRole);
+            
+            showNotification('Dati caricati con successo', 'success');
+            
+        } catch (error) {
+            console.error('Errore caricamento dati:', error);
+            showNotification('Errore nel caricamento', 'error');
+        }
+    }
+    
+    function updateStats(tasks, userEmail, userRole) {
+        const statsContainer = document.getElementById('stats-cards');
+        
+        // Calcola statistiche
+        const completed = tasks.filter(t => t.status === 'completed').length;
+        const pending = tasks.filter(t => t.status === 'pending').length;
+        const inProgress = tasks.filter(t => t.status === 'in-progress').length;
+        const overdue = tasks.filter(t => {
+            if (!t.dueDate || t.status === 'completed') return false;
+            const dueDate = t.dueDate.toDate ? t.dueDate.toDate() : new Date(t.dueDate);
+            return dueDate < new Date();
+        }).length;
+        
+        statsContainer.innerHTML = `
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: rgba(67, 97, 238, 0.1); color: var(--primary);">
+                    <i class="fas fa-tasks"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>${tasks.length}</h3>
+                    <p>${userRole === 'admin' ? 'Task Totali' : 'Mie Task'}</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: rgba(76, 201, 240, 0.1); color: var(--success);">
+                    <i class="fas fa-check-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>${completed}</h3>
+                    <p>Completate</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: rgba(248, 150, 30, 0.1); color: var(--warning);">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>${inProgress}</h3>
+                    <p>In Corso</p>
+                </div>
+            </div>
+            
+            <div class="stat-card">
+                <div class="stat-icon" style="background-color: rgba(247, 37, 133, 0.1); color: var(--danger);">
+                    <i class="fas fa-exclamation-circle"></i>
+                </div>
+                <div class="stat-info">
+                    <h3>${overdue}</h3>
+                    <p>In Ritardo</p>
+                </div>
+            </div>
+        `;
+    }
+    
+    function displayTasks(tasks, userEmail, userRole) {
+        const container = document.getElementById('tasks-container');
+        
+        if (tasks.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <i class="fas fa-tasks"></i>
+                    <h3>Nessuna task trovata</h3>
+                    <p>Crea la tua prima task!</p>
+                    <button class="btn btn-primary" onclick="window.location.href='add-task.html'">
+                        <i class="fas fa-plus"></i> Crea Task
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        // ⭐ Passa anche il ruolo per determinare i permessi
+        container.innerHTML = renderTasksCards(tasks, userEmail, userRole);
+    }
+    
+    function setupEventListeners() {
+        // Logout
+        const logoutBtn = document.getElementById('logout-btn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', logoutUser);
+        }
+        
+        // Refresh
+        const refreshBtn = document.getElementById('refresh-btn');
+        if (refreshBtn) {
+            refreshBtn.addEventListener('click', async () => {
+                const user = getCurrentUser();
+                if (user) {
+                    showNotification('Aggiornamento...', 'info');
+                    await loadDashboardData(user.email, user.role);
+                }
+            });
+        }
+        
+        // Filtri
+        ['search', 'priority-filter', 'status-filter'].forEach(id => {
+            const element = document.getElementById(id);
+            if (element) {
+                element.addEventListener('input', () => {
+                    applyFilters();
+                });
+            }
+        });
+    }
+    
+    function applyFilters() {
+        // Implementa i filtri se necessario
+        console.log('Filtri applicati');
+    }
+</script>
+</body>
+</html>

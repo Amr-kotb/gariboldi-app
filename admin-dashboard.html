@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Amministratore - Task Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="dashboard.html" class="sidebar-logo">
+                    <i class="fas fa-tasks"></i>
+                    <h2>Task Manager</h2>
+                </a>
+            </div>
+            
+            <div class="sidebar-user" id="sidebar-user"></div>
+            
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="my-tasks.html" class="nav-item">
+                    <i class="fas fa-list-check"></i>
+                    <span>Le Mie Task</span>
+                </a>
+                <a href="add-task.html" class="nav-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Aggiungi Task</span>
+                </a>
+                <a href="trash.html" class="nav-item">
+                    <i class="fas fa-trash-can"></i>
+                    <span>Cestino Personale</span>
+                </a>
+                <a href="profile.html" class="nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profilo & Statistiche</span>
+                </a>
+                
+                <!-- ⭐ Admin Links (sempre visibili qui) -->
+                <div id="admin-links">
+                    <div class="nav-divider">
+                        <span>Amministrazione</span>
+                    </div>
+                    <a href="admin-dashboard.html" class="nav-item active">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard Globale</span>
+                    </a>
+                    <a href="admin-trash.html" class="nav-item">
+                        <i class="fas fa-dumpster"></i>
+                        <span>Cestino Globale</span>
+                    </a>
+                    <a href="admin-stats.html" class="nav-item">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Statistiche Aziendali</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <div class="header">
+                <h1><i class="fas fa-crown"></i> Dashboard Amministratore</h1>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="window.location.href='add-task.html'">
+                        <i class="fas fa-plus"></i> Nuova Task
+                    </button>
+                    <button class="btn btn-outline" onclick="window.location.href='admin-stats.html'">
+                        <i class="fas fa-chart-pie"></i> Statistiche
+                    </button>
+                    <button class="btn btn-outline" id="refresh-btn">
+                        <i class="fas fa-sync-alt"></i> Aggiorna
+                    </button>
+                </div>
+            </div>
+            
+            <!-- ⭐ Statistiche Globali Admin -->
+            <div class="stats-grid" id="admin-stats-cards">
+                <div class="spinner"></div>
+            </div>
+            
+            <!-- ⭐ Gestione Completa Task -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-tasks"></i> Gestione Completa Task Aziendali</h2>
+                    <p>Come amministratore, puoi modificare, assegnare ed eliminare qualsiasi task.</p>
+                </div>
+                
+                <div class="admin-actions" style="margin-bottom: 20px;">
+                    <button class="btn btn-primary" id="assign-multiple-btn">
+                        <i class="fas fa-user-plus"></i> Assegna Multiple
+                    </button>
+                    <button class="btn btn-outline" id="export-csv-btn">
+                        <i class="fas fa-download"></i> Esporta CSV
+                    </button>
+                    <button class="btn btn-outline" id="bulk-delete-btn">
+                        <i class="fas fa-trash"></i> Elimina Multiple
+                    </button>
+                </div>
+                
+                <div id="admin-tasks-container">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+            
+            <!-- ⭐ Gestione Utenti (solo admin) -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title"><i class="fas fa-users"></i> Gestione Utenti</h2>
+                </div>
+                <div id="users-management">
+                    <p>Caricamento utenti...</p>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/admin.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // ⭐ SOLO ADMIN può accedere a questa pagina
+                const authResult = await checkAuth('admin');
+                const user = authResult.user;
+                const role = authResult.role;
+                
+                console.log('Admin autenticato:', user.email);
+                
+                displayUserInfo();
+                loadAdminDashboard();
+                setupAdminEventListeners();
+                
+            } catch (error) {
+                console.error('Accesso non autorizzato:', error);
+                showNotification('Accesso riservato agli amministratori', 'error');
+                setTimeout(() => {
+                    window.location.href = 'dashboard.html';
+                }, 2000);
+            }
+        });
+        
+        function displayUserInfo() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const sidebarUser = document.getElementById('sidebar-user');
+            
+            if (sidebarUser && user.email) {
+                const initials = user.displayName 
+                    ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                    : user.email.substring(0, 2).toUpperCase();
+                
+                sidebarUser.innerHTML = `
+                    <div class="user-avatar" style="background: linear-gradient(135deg, #7209b7, #4361ee);">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="user-info">
+                        <h4>${user.displayName || user.email.split('@')[0]}</h4>
+                        <p>${user.email}</p>
+                        <span class="user-role admin">Amministratore</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function loadAdminDashboard() {
+            try {
+                // Carica statistiche aziendali
+                const stats = await getCompanyStats();
+                updateAdminStats(stats);
+                
+                // Carica tutte le task
+                const tasks = await loadAllTasks();
+                displayAdminTasks(tasks);
+                
+                // Carica utenti
+                await loadUsersList();
+                
+            } catch (error) {
+                console.error('Errore caricamento dashboard admin:', error);
+                showNotification('Errore nel caricamento', 'error');
+            }
+        }
+        
+        function updateAdminStats(stats) {
+            const statsContainer = document.getElementById('admin-stats-cards');
+            
+            if (!stats) {
+                statsContainer.innerHTML = '<p>Errore nel caricamento statistiche</p>';
+                return;
+            }
+            
+            statsContainer.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(114, 9, 183, 0.1); color: #7209b7;">
+                        <i class="fas fa-tasks"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${stats.totalTasks}</h3>
+                        <p>Task Totali</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(67, 97, 238, 0.1); color: var(--primary);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${stats.totalUsers}</h3>
+                        <p>Utenti</p>
+                        <small>${stats.adminUsers} admin, ${stats.employeeUsers} dipendenti</small>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(76, 201, 240, 0.1); color: var(--success);">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${stats.completedTasks}</h3>
+                        <p>Task Completate</p>
+                        <small>${stats.totalTasks > 0 ? Math.round((stats.completedTasks / stats.totalTasks) * 100) : 0}%</small>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(247, 37, 133, 0.1); color: var(--danger);">
+                        <i class="fas fa-exclamation-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3>${stats.overdueTasks}</h3>
+                        <p>Task in Ritardo</p>
+                    </div>
+                </div>
+            `;
+        }
+        
+        function displayAdminTasks(tasks) {
+            const container = document.getElementById('admin-tasks-container');
+            
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-tasks"></i>
+                        <h3>Nessuna task nel sistema</h3>
+                        <p>Crea la prima task!</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Usa la tabella speciale per admin
+            container.innerHTML = renderAdminTasksTable(tasks);
+            
+            // Aggiungi event listeners ai bottoni admin
+            attachAdminTaskButtonsListeners();
+        }
+        
+        async function loadUsersList() {
+            try {
+                const usersSnapshot = await firebase.firestore().collection('users').get();
+                const users = [];
+                
+                usersSnapshot.forEach(doc => {
+                    users.push(doc.data());
+                });
+                
+                const usersContainer = document.getElementById('users-management');
+                let html = '<div class="users-grid">';
+                
+                users.forEach(user => {
+                    html += `
+                        <div class="user-card">
+                            <div class="user-avatar-small">
+                                ${user.displayName ? user.displayName.charAt(0).toUpperCase() : user.email.charAt(0).toUpperCase()}
+                            </div>
+                            <div class="user-info-small">
+                                <strong>${user.displayName || user.email.split('@')[0]}</strong>
+                                <small>${user.email}</small>
+                                <span class="user-role-badge ${user.role}">
+                                    ${user.role === 'admin' ? 'Amministratore' : 'Dipendente'}
+                                </span>
+                            </div>
+                            <div class="user-actions">
+                                <button class="btn btn-icon btn-sm" onclick="editUser('${user.email}')">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+                usersContainer.innerHTML = html;
+                
+            } catch (error) {
+                console.error('Errore caricamento utenti:', error);
+                document.getElementById('users-management').innerHTML = 
+                    '<p>Errore nel caricamento utenti</p>';
+            }
+        }
+        
+        function setupAdminEventListeners() {
+            document.getElementById('logout-btn').addEventListener('click', logoutUser);
+            
+            document.getElementById('refresh-btn').addEventListener('click', async () => {
+                showNotification('Aggiornamento dashboard admin...', 'info');
+                await loadAdminDashboard();
+            });
+            
+            document.getElementById('export-csv-btn').addEventListener('click', () => {
+                showNotification('Esportazione CSV (funzionalità demo)', 'info');
+            });
+        }
+        
+        function attachAdminTaskButtonsListeners() {
+            // Implementa gli event listeners per i bottoni admin
+            // (edit-task-admin, delete-task-admin, complete-task-admin, assign-task-admin)
+        }
+        
+        function editUser(userEmail) {
+            showNotification(`Modifica utente: ${userEmail}`, 'info');
+            // Implementa modifica utente
+        }
+    </script>
+    
+    <style>
+        .admin-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .users-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .user-card {
+            display: flex;
+            align-items: center;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .user-avatar-small {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #4361ee, #7209b7);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            margin-right: 15px;
+        }
+        
+        .user-info-small {
+            flex: 1;
+        }
+        
+        .user-role-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            margin-top: 5px;
+        }
+        
+        .user-role-badge.admin {
+            background-color: #e0f7fa;
+            color: #00796b;
+        }
+        
+        .user-role-badge.employee {
+            background-color: #f3e5f5;
+            color: #7b1fa2;
+        }
+        
+        .user-actions {
+            display: flex;
+            gap: 5px;
+        }
+    </style>
+</body>
+</html>

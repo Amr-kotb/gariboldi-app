@@ -1,0 +1,19 @@
+tuo-progetto/
+├── 📄 index.html                    # Login
+├── 📄 dashboard.html                # Dashboard principale
+├── 📄 my-tasks.html                 # Le mie task
+├── 📄 add-task.html                 # Aggiungi task
+├── 📄 trash.html                    # Cestino personale
+├── 📄 profile.html                  # Profilo e statistiche
+├── 📄 admin-dashboard.html          # Dashboard amministratore ⭐
+├── 📄 admin-trash.html              # Cestino globale ⭐
+├── 📄 admin-stats.html              # Statistiche aziendali ⭐
+├── 📄 setup.html                    # Setup utenti
+├── 📁 css/
+│   └── 📄 styles.css
+└── 📁 js/
+    ├── 📄 firebase-config.js        # Configurazione Firebase
+    ├── 📄 auth.js                   # Autenticazione (ruoli)
+    ├── 📄 tasks.js                  # Gestione task
+    ├── 📄 utils.js                  # Utility
+    └── 📄 admin.js                  # Funzioni admin (opzionale)

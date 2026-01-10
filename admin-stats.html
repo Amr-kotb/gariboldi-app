@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Statistiche Aziendali - Task Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- jsPDF per esportazione PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- SheetJS per Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- html2canvas per screenshot -->
+    <script src="https://html2canvas.hertzen.com/dist/html2canvas.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="dashboard.html" class="sidebar-logo">
+                    <i class="fas fa-tasks"></i>
+                    <h2>Task Manager</h2>
+                </a>
+            </div>
+            
+            <div class="sidebar-user" id="sidebar-user">
+                <!-- Popolato dinamicamente -->
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="my-tasks.html" class="nav-item">
+                    <i class="fas fa-list-check"></i>
+                    <span>Le Mie Task</span>
+                </a>
+                <a href="add-task.html" class="nav-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Aggiungi Task</span>
+                </a>
+                <a href="trash.html" class="nav-item">
+                    <i class="fas fa-trash-can"></i>
+                    <span>Cestino Personale</span>
+                </a>
+                <a href="profile.html" class="nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profilo & Statistiche</span>
+                </a>
+                
+                <!-- Admin Links -->
+                <div id="admin-links">
+                    <div class="nav-divider">
+                        <span>Amministrazione</span>
+                    </div>
+                    <a href="admin-dashboard.html" class="nav-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard Globale</span>
+                    </a>
+                    <a href="admin-trash.html" class="nav-item">
+                        <i class="fas fa-dumpster"></i>
+                        <span>Cestino Globale</span>
+                    </a>
+                    <a href="admin-stats.html" class="nav-item active">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Statistiche Aziendali</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header con filtri -->
+            <div class="header">
+                <div>
+                    <h1>Statistiche Aziendali</h1>
+                    <p class="text-muted" id="current-period">Periodo: Ultimi 30 giorni</p>
+                </div>
+                <div class="header-actions">
+                    <div class="filter-group">
+                        <select id="period-filter" class="form-control">
+                            <option value="7">Ultimi 7 giorni</option>
+                            <option value="30" selected>Ultimi 30 giorni</option>
+                            <option value="90">Ultimi 90 giorni</option>
+                            <option value="365">Ultimo anno</option>
+                            <option value="all">Tutti i periodi</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-outline" id="export-excel-btn" title="Esporta Excel">
+                        <i class="fas fa-file-excel"></i> Excel
+                    </button>
+                    <button class="btn btn-outline" id="export-pdf-btn" title="Esporta PDF">
+                        <i class="fas fa-file-pdf"></i> PDF
+                    </button>
+                    <button class="btn btn-primary" id="refresh-stats-btn">
+                        <i class="fas fa-sync-alt"></i> Aggiorna
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Overview Statistiche -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(67, 97, 238, 0.1); color: var(--primary);">
+                        <i class="fas fa-users"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="total-users">0</h3>
+                        <p>Utenti Totali</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(76, 201, 240, 0.1); color: var(--success);">
+                        <i class="fas fa-check-circle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="total-tasks">0</h3>
+                        <p>Task Totali</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(247, 37, 133, 0.1); color: var(--danger);">
+                        <i class="fas fa-exclamation-triangle"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="overdue-tasks">0</h3>
+                        <p>Task in Ritardo</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(114, 9, 183, 0.1); color: var(--secondary);">
+                        <i class="fas fa-percentage"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="completion-rate">0%</h3>
+                        <p>Tasso Completamento</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(248, 150, 30, 0.1); color: var(--warning);">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="avg-completion-days">0</h3>
+                        <p>Giorni medi completamento</p>
+                    </div>
+                </div>
+                
+                <div class="stat-card">
+                    <div class="stat-icon" style="background-color: rgba(72, 149, 239, 0.1); color: var(--info);">
+                        <i class="fas fa-star"></i>
+                    </div>
+                    <div class="stat-info">
+                        <h3 id="top-performer">-</h3>
+                        <p>Top Performer</p>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Dashboard Principale -->
+            <div class="dashboard-grid">
+                <!-- Sezione 1: Statistiche per Dipendente -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-user-tie"></i> Statistiche per Dipendente
+                        </h2>
+                        <div class="header-actions">
+                            <input type="text" id="employee-search" placeholder="Cerca dipendente..." class="form-control" style="width: 200px;">
+                            <select id="employee-sort" class="form-control">
+                                <option value="completion">Tasso Completamento</option>
+                                <option value="tasks">Task Totali</option>
+                                <option value="name">Nome</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="employees-stats-container">
+                        <!-- Popolato dinamicamente -->
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+                
+                <!-- Sezione 2: Grafici -->
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-chart-pie"></i> Distribuzione Task
+                        </h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="tasksDistributionChart"></canvas>
+                    </div>
+                </div>
+                
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-chart-line"></i> Andamento Completamenti
+                        </h2>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="completionTrendChart"></canvas>
+                    </div>
+                </div>
+                
+                <!-- Sezione 3: Performance Dipendenti -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-medal"></i> Performance Dipendenti
+                        </h2>
+                        <div class="header-actions">
+                            <button class="btn btn-sm btn-outline" id="export-performance-excel">
+                                <i class="fas fa-file-excel"></i> Esporta Excel
+                            </button>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" id="performance-table">
+                            <thead>
+                                <tr>
+                                    <th>Dipendente</th>
+                                    <th>Task Assegnate</th>
+                                    <th>Completate</th>
+                                    <th>In Corso</th>
+                                    <th>In Ritardo</th>
+                                    <th>Tasso Successo</th>
+                                    <th>Tempo Medio</th>
+                                    <th>Ultima Task</th>
+                                    <th>Stato</th>
+                                </tr>
+                            </thead>
+                            <tbody id="performance-body">
+                                <!-- Popolato dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Sezione 4: Task Critiche -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-exclamation-circle"></i> Task Critiche e in Ritardo
+                        </h2>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" id="critical-tasks-table">
+                            <thead>
+                                <tr>
+                                    <th>Task</th>
+                                    <th>Dipendente</th>
+                                    <th>Priorità</th>
+                                    <th>Stato</th>
+                                    <th>Scadenza</th>
+                                    <th>Giorni Ritardo</th>
+                                    <th>Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="critical-tasks-body">
+                                <!-- Popolato dinamicamente -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Sezione 5: Report Mensile -->
+                <div class="card full-width">
+                    <div class="card-header">
+                        <h2 class="card-title">
+                            <i class="fas fa-calendar-alt"></i> Report Mensile
+                        </h2>
+                        <div class="header-actions">
+                            <select id="month-select" class="form-control">
+                                <!-- Popolato dinamicamente -->
+                            </select>
+                            <button class="btn btn-sm btn-outline" id="export-month-report">
+                                <i class="fas fa-file-pdf"></i> PDF Mensile
+                            </button>
+                        </div>
+                    </div>
+                    <div id="monthly-report-container">
+                        <!-- Popolato dinamicamente -->
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Modale Dettaglio Dipendente -->
+    <div class="modal" id="employee-detail-modal">
+        <div class="modal-content" style="max-width: 800px;">
+            <div class="modal-header">
+                <h3 class="modal-title" id="employee-modal-title">Dettaglio Dipendente</h3>
+                <button class="modal-close" id="close-employee-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div id="employee-detail-content">
+                    <!-- Popolato dinamicamente -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/admin.js"></script>
+    <script src="js/admin-stats.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            console.log('📊 Inizializzazione statistiche admin...');
+            
+            try {
+                // Controlla autenticazione e ruolo admin
+                const authResult = await checkAuth();
+                const user = authResult.user;
+                const role = authResult.role;
+                
+                if (role !== 'admin') {
+                    showNotification('Accesso negato. Solo admin possono vedere queste statistiche.', 'error');
+                    window.location.href = 'dashboard.html';
+                    return;
+                }
+                
+                console.log('✅ Admin autenticato:', user.email);
+                
+                // Mostra info utente
+                displayUserInfo(user, role);
+                
+                // Inizializza dashboard statistiche
+                window.adminStats = new AdminStatistics();
+                await adminStats.init();
+                
+                // Setup event listeners
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('❌ Errore inizializzazione statistiche:', error);
+            }
+        });
+        
+        function displayUserInfo(user, role) {
+            const sidebarUser = document.getElementById('sidebar-user');
+            
+            if (sidebarUser && user.email) {
+                const initials = user.displayName 
+                    ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                    : user.email.substring(0, 2).toUpperCase();
+                
+                const roleText = 'Amministratore';
+                const roleClass = 'admin';
+                
+                sidebarUser.innerHTML = `
+                    <div class="user-avatar">${initials}</div>
+                    <div class="user-info">
+                        <h4>${user.displayName || user.email.split('@')[0]}</h4>
+                        <p>${user.email}</p>
+                        <span class="user-role ${roleClass}">${roleText}</span>
+                    </div>
+                `;
+            }
+        }
+        
+        function setupEventListeners() {
+            // Logout
+            document.getElementById('logout-btn').addEventListener('click', logoutUser);
+            
+            // Refresh
+            document.getElementById('refresh-stats-btn').addEventListener('click', async () => {
+                showNotification('Aggiornamento statistiche...', 'info');
+                await adminStats.loadAllData();
+            });
+            
+            // Filtro periodo
+            document.getElementById('period-filter').addEventListener('change', async (e) => {
+                const days = e.target.value;
+                const periodText = days === 'all' ? 'Tutti i periodi' : `Ultimi ${days} giorni`;
+                document.getElementById('current-period').textContent = `Periodo: ${periodText}`;
+                adminStats.filterPeriod = days;
+                await adminStats.loadAllData();
+            });
+            
+            // Ordina dipendenti
+            document.getElementById('employee-sort').addEventListener('change', async (e) => {
+                adminStats.sortEmployeesBy(e.target.value);
+            });
+            
+            // Cerca dipendente
+            document.getElementById('employee-search').addEventListener('input', (e) => {
+                adminStats.filterEmployees(e.target.value);
+            });
+            
+            // Export Excel
+            document.getElementById('export-excel-btn').addEventListener('click', () => {
+                adminStats.exportToExcel();
+            });
+            
+            // Export PDF
+            document.getElementById('export-pdf-btn').addEventListener('click', () => {
+                adminStats.exportToPDF();
+            });
+            
+            // Export performance Excel
+            document.getElementById('export-performance-excel').addEventListener('click', () => {
+                adminStats.exportPerformanceToExcel();
+            });
+            
+            // Export report mensile PDF
+            document.getElementById('export-month-report').addEventListener('click', () => {
+                adminStats.exportMonthlyReport();
+            });
+            
+            // Cambia mese report
+            document.getElementById('month-select').addEventListener('change', (e) => {
+                adminStats.loadMonthlyReport(e.target.value);
+            });
+            
+            // Chiudi modale dipendente
+            document.getElementById('close-employee-modal').addEventListener('click', () => {
+                document.getElementById('employee-detail-modal').classList.remove('show');
+            });
+            
+            // Chiudi modale cliccando fuori
+            document.getElementById('employee-detail-modal').addEventListener('click', (e) => {
+                if (e.target === document.getElementById('employee-detail-modal')) {
+                    document.getElementById('employee-detail-modal').classList.remove('show');
+                }
+            });
+        }
+    </script>
+</body>
+</html>

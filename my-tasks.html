@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Le Mie Task - Task Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar (uguale a dashboard) -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="dashboard.html" class="sidebar-logo">
+                    <i class="fas fa-tasks"></i>
+                    <h2>Task Manager</h2>
+                </a>
+            </div>
+            
+            <div class="sidebar-user" id="sidebar-user"></div>
+            
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="my-tasks.html" class="nav-item active">
+                    <i class="fas fa-list-check"></i>
+                    <span>Le Mie Task</span>
+                </a>
+                <a href="add-task.html" class="nav-item">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Aggiungi Task</span>
+                </a>
+                <a href="trash.html" class="nav-item">
+                    <i class="fas fa-trash-can"></i>
+                    <span>Cestino Personale</span>
+                </a>
+                <a href="profile.html" class="nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profilo & Statistiche</span>
+                </a>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+        
+        <main class="main-content">
+            <div class="header">
+                <h1>Le Mie Task</h1>
+                <div class="header-actions">
+                    <button class="btn btn-primary" onclick="window.location.href='add-task.html'">
+                        <i class="fas fa-plus"></i> Nuova Task
+                    </button>
+                </div>
+            </div>
+            
+            <div id="tasks-container">
+                <div class="spinner"></div>
+            </div>
+        </main>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/tasks.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                await checkAuth();
+                const user = JSON.parse(localStorage.getItem('user') || {});
+                
+                if (user.email) {
+                    displayUserInfo();
+                    loadMyTasks(user.email);
+                    setupEventListeners();
+                }
+                
+            } catch (error) {
+                window.location.href = 'index.html';
+            }
+        });
+        
+        function displayUserInfo() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const sidebarUser = document.getElementById('sidebar-user');
+            
+            if (sidebarUser && user.email) {
+                const initials = user.displayName 
+                    ? user.displayName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2)
+                    : user.email.substring(0, 2).toUpperCase();
+                
+                sidebarUser.innerHTML = `
+                    <div class="user-avatar">${initials}</div>
+                    <div class="user-info">
+                        <h4>${user.displayName || user.email.split('@')[0]}</h4>
+                        <p>${user.email}</p>
+                        <span class="user-role employee">Dipendente</span>
+                    </div>
+                `;
+            }
+        }
+        
+        async function loadMyTasks(userEmail) {
+            try {
+                const tasks = await loadUserTasks(userEmail);
+                displayTasks(tasks, userEmail);
+            } catch (error) {
+                console.error('Errore caricamento task:', error);
+                document.getElementById('tasks-container').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <h3>Errore caricamento</h3>
+                        <p>${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function displayTasks(tasks, userEmail) {
+            const container = document.getElementById('tasks-container');
+            
+            if (tasks.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-tasks"></i>
+                        <h3>Nessuna task assegnata</h3>
+                        <p>Crea una nuova task o aspetta che ti venga assegnata</p>
+                        <button class="btn btn-primary" onclick="window.location.href='add-task.html'">
+                            <i class="fas fa-plus"></i> Crea Task
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            
+            container.innerHTML = renderTasksCards(tasks, userEmail);
+        }
+        
+        function setupEventListeners() {
+            document.getElementById('logout-btn').addEventListener('click', logoutUser);
+        }
+    </script>
+</body>
+</html>

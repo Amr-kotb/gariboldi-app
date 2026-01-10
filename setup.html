@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Setup Utenti Task Manager</title>
+    <style>
+        body { font-family: Arial; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .card { background: #f5f5f5; padding: 20px; margin: 20px 0; border-radius: 10px; }
+        button { padding: 10px 20px; margin: 10px; background: #4361ee; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #3a56d4; }
+        .log { background: white; padding: 15px; margin-top: 20px; border-radius: 5px; border-left: 4px solid #4361ee; max-height: 300px; overflow-y: auto; }
+        .success { color: green; }
+        .error { color: red; }
+        .warning { color: orange; }
+    </style>
+</head>
+<body>
+    <h1>⚙️ Setup Sistema Task Manager</h1>
+    
+    <div class="card">
+        <h3>Passaggio 1: Configura Firebase</h3>
+        <p>Assicurati che in <code>js/firebase-config.js</code> ci sia la tua configurazione Firebase reale.</p>
+    </div>
+    
+    <div class="card">
+        <h3>Passaggio 2: Crea Utenti</h3>
+        <p>Clicca per creare gli utenti (4 dipendenti + 1 amministratore):</p>
+        <button onclick="createUsers()">Crea Utenti</button>
+        <button onclick="createTestTasks()">Crea Task Demo</button>
+    </div>
+    
+    <div class="log" id="log">
+        <h4>Log Attività:</h4>
+    </div>
+    
+    <div style="margin-top: 30px;">
+        <a href="index.html" style="color: #4361ee;">← Torna al Login</a>
+    </div>
+    
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <script src="js/firebase-config.js"></script>
+    
+    <script>
+        function addLog(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const timestamp = new Date().toLocaleTimeString();
+            const colorClass = type === 'success' ? 'success' : 
+                              type === 'error' ? 'error' : 
+                              type === 'warning' ? 'warning' : '';
+            
+            logDiv.innerHTML += `
+                <div class="${colorClass}">
+                    [${timestamp}] ${message}
+                </div>
+            `;
+            logDiv.scrollTop = logDiv.scrollHeight;
+        }
+        
+        async function createUsers() {
+            // ✅ TUTTI I 5 UTENTI CON RUOLI CORRETTI
+            const users = [
+                {
+                    email: 'andrea@gariboldi.com',
+                    password: 'andrea.gariboldi!',
+                    displayName: 'Andrea',
+                    role: 'employee'  // ⬅️ DIPENDENTE
+                },
+                {
+                    email: 'leonardo@gariboldi.com',
+                    password: 'leonardo.gariboldi!',
+                    displayName: 'Leonardo',
+                    role: 'employee'  // ⬅️ DIPENDENTE
+                },
+                {
+                    email: 'domenico@gariboldi.com',
+                    password: 'domenico.gariboldi!',
+                    displayName: 'Domenico',
+                    role: 'employee'  // ⬅️ DIPENDENTE
+                },
+                {
+                    email: 'stefano@gariboldi.com',
+                    password: 'stefano.gariboldi!',
+                    displayName: 'Stefano',
+                    role: 'employee'  // ⬅️ DIPENDENTE
+                },
+                {
+                    email: 'admin@gariboldi.com',      // ⭐ AMMINISTRATORE
+                    password: 'admin.gariboldi!',
+                    displayName: 'Amministratore Gariboldi',
+                    role: 'admin'     // ⬅️ AMMINISTRATORE
+                }
+            ];
+            
+            for (const userData of users) {
+                try {
+                    addLog(`Creazione: ${userData.email}...`, 'info');
+                    
+                    // Crea utente in Authentication
+                    const userCredential = await firebase.auth().createUserWithEmailAndPassword(
+                        userData.email, 
+                        userData.password
+                    );
+                    
+                    // Aggiorna displayName
+                    await userCredential.user.updateProfile({
+                        displayName: userData.displayName
+                    });
+                    
+                    // Salva in Firestore con ruolo
+                    await firebase.firestore().collection('users').doc(userCredential.user.uid).set({
+                        email: userData.email,
+                        displayName: userData.displayName,
+                        role: userData.role,  // ⭐ Salva il ruolo
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    });
+                    
+                    addLog(`✓ Creato: ${userData.email} (${userData.role})`, 'success');
+                    
+                } catch (error) {
+                    if (error.code === 'auth/email-already-in-use') {
+                        addLog(`⚠ ${userData.email} già esistente`, 'warning');
+                    } else {
+                        addLog(`✗ Errore ${userData.email}: ${error.message}`, 'error');
+                    }
+                }
+            }
+            
+            addLog('=== Setup utenti completato ===', 'success');
+            addLog('✅ 4 dipendenti + 1 amministratore creati', 'success');
+            addLog('🔑 Admin: admin@gariboldi.com / admin.gariboldi!', 'info');
+            addLog('👥 Dipendenti: andrea@gariboldi.com / andrea.gariboldi!', 'info');
+        }
+        
+        async function createTestTasks() {
+            try {
+                // Crea task demo per test
+                const tasks = [
+                    {
+                        title: 'Aggiornamento software interno',
+                        description: 'Aggiornare tutti i computer aziendali.',
+                        assignedTo: 'leonardo@gariboldi.com',
+                        createdBy: 'admin@gariboldi.com',
+                        dueDate: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)),
+                        priority: 'high',
+                        status: 'pending',
+                        isDeleted: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    },
+                    {
+                        title: 'Preparazione report trimestrale',
+                        description: 'Raccogliere dati e preparare il report.',
+                        assignedTo: 'domenico@gariboldi.com',
+                        createdBy: 'admin@gariboldi.com',
+                        dueDate: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)),
+                        priority: 'critical',
+                        status: 'in-progress',
+                        isDeleted: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    },
+                    {
+                        title: 'Task per Andrea (dipendente)',
+                        description: 'Task assegnata a un dipendente.',
+                        assignedTo: 'andrea@gariboldi.com',
+                        createdBy: 'stefano@gariboldi.com',
+                        dueDate: firebase.firestore.Timestamp.fromDate(new Date(Date.now() + 5 * 24 * 60 * 60 * 1000)),
+                        priority: 'medium',
+                        status: 'pending',
+                        isDeleted: false,
+                        createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                    }
+                ];
+                
+                for (const task of tasks) {
+                    await firebase.firestore().collection('tasks').add(task);
+                    addLog(`Task creata: "${task.title}" per ${task.assignedTo}`, 'success');
+                }
+                
+                addLog('Task demo create con successo!', 'success');
+                
+            } catch (error) {
+                addLog(`Errore creazione task: ${error.message}`, 'error');
+            }
+        }
+    </script>
+</body>
+</html>

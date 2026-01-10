@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aggiungi Task - Task Manager</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <a href="dashboard.html" class="sidebar-logo">
+                    <i class="fas fa-tasks"></i>
+                    <h2>Task Manager</h2>
+                </a>
+            </div>
+            
+            <div class="sidebar-user" id="sidebar-user">
+                <!-- Popolato dinamicamente -->
+            </div>
+            
+            <nav class="sidebar-nav">
+                <a href="dashboard.html" class="nav-item">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+                <a href="my-tasks.html" class="nav-item">
+                    <i class="fas fa-list-check"></i>
+                    <span>Le Mie Task</span>
+                </a>
+                <a href="add-task.html" class="nav-item active">
+                    <i class="fas fa-plus-circle"></i>
+                    <span>Aggiungi Task</span>
+                </a>
+                <a href="trash.html" class="nav-item">
+                    <i class="fas fa-trash-can"></i>
+                    <span>Cestino Personale</span>
+                </a>
+                <a href="profile.html" class="nav-item">
+                    <i class="fas fa-user"></i>
+                    <span>Profilo & Statistiche</span>
+                </a>
+                
+                <!-- Admin Links (visibili solo agli admin) -->
+                <div id="admin-links" style="display: none;">
+                    <div class="nav-divider">
+                        <span>Amministrazione</span>
+                    </div>
+                    <a href="admin-dashboard.html" class="nav-item">
+                        <i class="fas fa-chart-line"></i>
+                        <span>Dashboard Globale</span>
+                    </a>
+                    <a href="admin-trash.html" class="nav-item">
+                        <i class="fas fa-dumpster"></i>
+                        <span>Cestino Globale</span>
+                    </a>
+                    <a href="admin-stats.html" class="nav-item">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Statistiche Aziendali</span>
+                    </a>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <button class="logout-btn" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="header">
+                <h1>Aggiungi Nuova Task</h1>
+                <div class="header-actions">
+                    <button class="btn btn-outline" onclick="window.location.href='dashboard.html'">
+                        <i class="fas fa-arrow-left"></i> Torna alla Dashboard
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <form id="add-task-form">
+                    <div class="form-group">
+                        <label for="task-title">Titolo *</label>
+                        <input type="text" id="task-title" placeholder="Inserisci un titolo descrittivo" required>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="task-description">Descrizione *</label>
+                        <textarea id="task-description" placeholder="Descrivi in dettaglio la task..." rows="4" required></textarea>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="task-assigned">Assegnata a *</label>
+                            <select id="task-assigned" required>
+                                <!-- Popolato dinamicamente -->
+                            </select>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="task-priority">Priorità *</label>
+                            <select id="task-priority" required>
+                                <option value="low">Bassa</option>
+                                <option value="medium" selected>Media</option>
+                                <option value="high">Alta</option>
+                                <option value="critical">Critica</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="task-due-date">Data scadenza *</label>
+                            <input type="date" id="task-due-date" required>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="task-status">Stato</label>
+                            <select id="task-status">
+                                <option value="pending" selected>In attesa</option>
+                                <option value="in-progress">In corso</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-save"></i> Crea Task
+                        </button>
+                        <button type="button" class="btn btn-outline" onclick="window.location.href='dashboard.html'">
+                            Annulla
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </main>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+    
+
+    
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/tasks.js"></script>
+    <script src="js/utils.js"></script>
+    <script>
+        let currentUser = null;
+        let allUsers = [];
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const authResult = await checkAuth();
+                currentUser = authResult.user;
+                
+                displayUserInfo();
+                await loadUsersForAssignment();
+                setMinDateForDueDate();
+                setupEventListeners();
+                
+            } catch (error) {
+                console.error('Errore inizializzazione:', error);
+                window.location.href = 'index.html';
+            }
+        });
+        
+        async function loadUsersForAssignment() {
+            try {
+                allUsers = await loadUsers();
+                const select = document.getElementById('task-assigned');
+                
+                if (select) {
+                    select.innerHTML = createUserOptions(allUsers);
+                }
+            } catch (error) {
+                console.error('Errore caricamento utenti:', error);
+            }
+        }
+        
+        function setMinDateForDueDate() {
+            const dueDateInput = document.getElementById('task-due-date');
+            if (dueDateInput) {
+                const today = new Date().toISOString().split('T')[0];
+                dueDateInput.min = today;
+                // Imposta la data di default a domani
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                dueDateInput.value = tomorrow.toISOString().split('T')[0];
+            }
+        }
+        
+        function setupEventListeners() {
+            // Logout
+            document.getElementById('logout-btn')?.addEventListener('click', logoutUser);
+            
+            // Form aggiunta task
+            document.getElementById('add-task-form')?.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                
+                const user = JSON.parse(localStorage.getItem('user') || '{}');
+                const userEmail = user.email || '';
+                
+                const taskData = {
+                    title: document.getElementById('task-title').value,
+                    description: document.getElementById('task-description').value,
+                    assignedTo: document.getElementById('task-assigned').value,
+                    priority: document.getElementById('task-priority').value,
+                    status: document.getElementById('task-status').value,
+                    dueDate: new Date(document.getElementById('task-due-date').value)
+                };
+                
+                const success = await createTask(taskData, userEmail);
+                if (success) {
+                    // Reset form
+                    document.getElementById('add-task-form').reset();
+                    setMinDateForDueDate();
+                    
+                    // Reindirizza alla dashboard dopo un breve delay
+                    showNotification('Task creata con successo! Reindirizzamento...', 'success');
+                    setTimeout(() => {
+                        window.location.href = 'dashboard.html';
+                    }, 1500);
+                }
+            });
+        }
+        
+        function displayUserInfo() {
+            const user = JSON.parse(localStorage.getItem('user') || '{}');
+            const userEmail = user.email || '';
+            const userName = user.displayName || userEmail.split('@')[0];
+            const userRole = user.role || 'employee';
+            
+            const sidebarUser = document.getElementById('sidebar-user');
+            if (sidebarUser) {
+                const initials = userName.split(' ').map(n => n[0]).join('').toUpperCase().substring(0, 2);
+                
+                sidebarUser.innerHTML = `
+                    <div class="user-avatar">${initials}</div>
+                    <div class="user-info">
+                        <h4>${userName}</h4>
+                        <p>${userEmail}</p>
+                        <span class="user-role ${userRole}">${userRole === 'admin' ? 'Amministratore' : 'Dipendente'}</span>
+                    </div>
+                `;
+            }
+            
+            if (userRole === 'admin') {
+                const adminLinks = document.getElementById('admin-links');
+                if (adminLinks) {
+                    adminLinks.style.display = 'block';
+                }
+            }
+        }
+    </script>
+</body>
+</html>

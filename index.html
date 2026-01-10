@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task Manager - Login</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body class="login-page">
+    <div class="login-container">
+        <div class="login-header">
+            <div class="logo">
+                <i class="fas fa-tasks"></i>
+                <h1>Task Manager</h1>
+            </div>
+            <p>Accedi al sistema di gestione task aziendale</p>
+        </div>
+        
+        <div class="login-card">
+            <h2>Accesso</h2>
+            
+            <form id="login-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-envelope"></i>
+                        <input type="email" id="email" placeholder="esempio@gariboldi.com" required>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <div class="input-with-icon">
+                        <i class="fas fa-lock"></i>
+                        <input type="password" id="password" placeholder="Inserisci password" required>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary btn-block">
+                    <i class="fas fa-sign-in-alt"></i> Accedi
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+    
+    <!-- Firebase Scripts -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    
+    <!-- Configurazione e script personalizzati -->
+    <script src="js/firebase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/utils.js"></script>
+    
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        console.log('🔑 Pagina login caricata');
+        
+        // Auto-fill solo per testing (opzionale)
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            setTimeout(() => {
+                // Rimuovi o commenta se non ti serve
+                // document.getElementById('email').value = 'admin@gariboldi.com';
+                // document.getElementById('password').value = 'admin.gariboldi!';
+            }, 300);
+        }
+        
+        // Gestione submit form
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            if (!email || !password) {
+                showNotification('Compila tutti i campi', 'error');
+                return;
+            }
+            
+            // Disabilita pulsante durante login
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.innerHTML;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Accesso...';
+            submitBtn.disabled = true;
+            
+            try {
+                await loginUser(email, password);
+            } catch (error) {
+                submitBtn.innerHTML = originalText;
+                submitBtn.disabled = false;
+            }
+        });
+        
+        // 🔥 Controllo se l'utente è già loggato - VERSIONE SICURA 🔥
+        // Solo se siamo sulla pagina login, verifichiamo lo stato
+        let authCheckDone = false;
+        
+        setTimeout(() => {
+            firebase.auth().onAuthStateChanged(function(user) {
+                if (authCheckDone) return;
+                authCheckDone = true;
+                
+                if (user) {
+                    console.log('👤 Utente già loggato, verifica sessione...');
+                    
+                    // Controlla se questa tab ha già una sessione
+                    const existingSession = sessionStorage.getItem('userData');
+                    const existingTabId = sessionStorage.getItem('tabId');
+                    
+                    if (existingSession && existingTabId) {
+                        const sessionData = JSON.parse(existingSession);
+                        // Se la sessione è per lo stesso utente, reindirizza
+                        if (sessionData.uid === user.uid) {
+                            console.log('✅ Sessione valida trovata, reindirizzamento...');
+                            setTimeout(() => {
+                                window.location.href = 'dashboard.html';
+                            }, 500);
+                        } else {
+                            // Utente diverso, fai logout per questa tab
+                            console.log('⚠ Utente diverso, pulizia sessione...');
+                            sessionStorage.clear();
+                        }
+                    } else {
+                        // Nessuna sessione, l'utente può fare login
+                        console.log('ℹ️ Nessuna sessione locale, rimani su login');
+                    }
+                } else {
+                    console.log('👤 Nessun utente autenticato, rimani su login');
+                }
+            });
+        }, 1000);
+    });
+</script>
+</body>
+</html>
