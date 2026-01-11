@@ -1,3 +1,5 @@
+//manca solo la parte per la console e l'accesso prima senza firebase poi con le credenziali giuste fatte nome.gariboldi!
+
 # Task Management Dashboard
 
 Dashboard web per la gestione dei task aziendali con Firebase, React.js e TypeScript.
