@@ -1,145 +1,142 @@
-// admin.js - Funzioni specifiche per amministratori
+// js/admin.js - VERSIONE SEMPLIFICATA
+console.log('👑 Admin semplice caricato');
 
-// Gestione utenti avanzata
+// Ottieni tutti gli utenti
 async function getAllUsers() {
     try {
-        const usersSnapshot = await firebase.firestore().collection('users').get();
-        const users = [];
+        const snapshot = await firebase.firestore()
+            .collection('users')
+            .get();
         
-        usersSnapshot.forEach(doc => {
+        const users = [];
+        snapshot.forEach(doc => {
             users.push({
                 id: doc.id,
                 ...doc.data()
             });
         });
         
+        console.log(`📊 ${users.length} utenti caricati`);
         return users;
+        
     } catch (error) {
-        console.error('Errore caricamento utenti:', error);
+        console.error('❌ Errore caricamento utenti:', error);
         return [];
+    }
+}
+
+// Aggiungi nuovo dipendente
+async function addEmployee(email, password, employeeData) {
+    try {
+        showNotification('Creazione dipendente...', 'info');
+        
+        // 1. Crea account Firebase
+        const userCredential = await firebase.auth().createUserWithEmailAndPassword(email, password);
+        const user = userCredential.user;
+        
+        // 2. Aggiorna profilo
+        if (employeeData.displayName) {
+            await user.updateProfile({
+                displayName: employeeData.displayName
+            });
+        }
+        
+        // 3. Crea documento in Firestore
+        await firebase.firestore()
+            .collection('users')
+            .doc(user.uid)
+            .set({
+                email: email,
+                displayName: employeeData.displayName || email.split('@')[0],
+                role: employeeData.role || 'employee',
+                department: employeeData.department || 'Generale',
+                phone: employeeData.phone || '',
+                hiredDate: employeeData.hiredDate || new Date().toISOString(),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                createdBy: firebase.auth().currentUser.uid,
+                isActive: true
+            });
+        
+        console.log('✅ Dipendente creato:', email);
+        showNotification(`Dipendente ${email} creato!`, 'success');
+        
+        return { uid: user.uid, email: email };
+        
+    } catch (error) {
+        console.error('❌ Errore creazione dipendente:', error);
+        
+        let errorMessage = 'Errore creazione';
+        if (error.code === 'auth/email-already-in-use') {
+            errorMessage = 'Email già registrata';
+        }
+        
+        showNotification(errorMessage, 'error');
+        throw error;
     }
 }
 
 // Cambia ruolo utente
 async function changeUserRole(userId, newRole) {
     try {
-        await firebase.firestore().collection('users').doc(userId).update({
-            role: newRole,
-            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        showNotification(`Ruolo utente aggiornato a: ${newRole}`, 'success');
-        return true;
-    } catch (error) {
-        console.error('Errore cambio ruolo:', error);
-        showNotification('Errore nel cambio ruolo', 'error');
-        return false;
-    }
-}
-
-// Esporta dati in CSV
-function exportToCSV(tasks, filename = 'tasks_export.csv') {
-    if (tasks.length === 0) {
-        showNotification('Nessun dato da esportare', 'warning');
-        return;
-    }
-    
-    // Intestazioni CSV
-    const headers = ['ID', 'Titolo', 'Descrizione', 'Assegnata a', 'Creata da', 
-                    'Data Creazione', 'Data Scadenza', 'Priorità', 'Stato'];
-    
-    // Dati CSV
-    const rows = tasks.map(task => [
-        task.id,
-        `"${task.title.replace(/"/g, '""')}"`,
-        `"${task.description.replace(/"/g, '""')}"`,
-        task.assignedTo,
-        task.createdBy,
-        task.createdAt ? formatFullDate(task.createdAt) : 'N/A',
-        task.dueDate ? formatFullDate(task.dueDate) : 'N/A',
-        task.priority,
-        task.status
-    ]);
-    
-    // Crea contenuto CSV
-    const csvContent = [
-        headers.join(','),
-        ...rows.map(row => row.join(','))
-    ].join('\n');
-    
-    // Crea blob e scarica
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    const url = URL.createObjectURL(blob);
-    
-    link.setAttribute('href', url);
-    link.setAttribute('download', filename);
-    link.style.visibility = 'hidden';
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    showNotification('Esportazione CSV completata!', 'success');
-}
-
-// Bulk operations per admin
-async function bulkDeleteTasks(taskIds) {
-    if (!taskIds.length) {
-        showNotification('Nessuna task selezionata', 'warning');
-        return;
-    }
-    
-    if (!confirm(`Eliminare ${taskIds.length} task selezionate?`)) {
-        return;
-    }
-    
-    try {
-        const batch = firebase.firestore().batch();
-        const user = JSON.parse(localStorage.getItem('user') || '{}');
-        
-        taskIds.forEach(taskId => {
-            const taskRef = firebase.firestore().collection('tasks').doc(taskId);
-            batch.update(taskRef, {
-                isDeleted: true,
-                deletedBy: user.email,
-                deletedAt: firebase.firestore.FieldValue.serverTimestamp()
+        await firebase.firestore()
+            .collection('users')
+            .doc(userId)
+            .update({
+                role: newRole,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedBy: firebase.auth().currentUser.uid
             });
-        });
         
-        await batch.commit();
-        showNotification(`${taskIds.length} task eliminate`, 'success');
+        console.log(`✅ Ruolo aggiornato per ${userId}: ${newRole}`);
+        showNotification(`Ruolo aggiornato a: ${newRole}`, 'success');
+        
         return true;
+        
     } catch (error) {
-        console.error('Errore eliminazione bulk:', error);
-        showNotification('Errore nell\'eliminazione', 'error');
+        console.error('❌ Errore cambio ruolo:', error);
+        showNotification('Errore cambio ruolo', 'error');
         return false;
     }
 }
 
-async function bulkUpdateTasks(taskIds, updates) {
-    if (!taskIds.length) {
-        showNotification('Nessuna task selezionata', 'warning');
-        return;
-    }
-    
+// Disabilita/abilita utente
+async function toggleUserStatus(userId, disabled) {
     try {
-        const batch = firebase.firestore().batch();
-        
-        taskIds.forEach(taskId => {
-            const taskRef = firebase.firestore().collection('tasks').doc(taskId);
-            batch.update(taskRef, {
-                ...updates,
+        await firebase.firestore()
+            .collection('users')
+            .doc(userId)
+            .update({
+                isActive: !disabled,
                 updatedAt: firebase.firestore.FieldValue.serverTimestamp()
             });
-        });
         
-        await batch.commit();
-        showNotification(`${taskIds.length} task aggiornate`, 'success');
+        const status = disabled ? 'disabilitato' : 'abilitato';
+        console.log(`✅ Utente ${status}: ${userId}`);
+        showNotification(`Utente ${status}`, 'success');
+        
         return true;
+        
     } catch (error) {
-        console.error('Errore aggiornamento bulk:', error);
-        showNotification('Errore nell\'aggiornamento', 'error');
+        console.error('❌ Errore cambio stato:', error);
         return false;
     }
 }
+
+// Esporta
+window.admin = {
+    getAllUsers,
+    addEmployee,
+    changeUserRole,
+    toggleUserStatus
+};
+
+// Verifica admin all'avvio
+document.addEventListener('DOMContentLoaded', async function() {
+    if (window.location.pathname.includes('admin')) {
+        const user = auth.getCurrentUser();
+        if (!user || user.role !== 'admin') {
+            showNotification('Accesso riservato agli admin', 'error');
+            setTimeout(() => window.location.href = 'dashboard.html', 2000);
+        }
+    }
+});

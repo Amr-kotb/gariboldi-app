@@ -126,6 +126,131 @@
             </div>
         </main>
     </div>
+
+    <!-- In admin-dashboard.html, aggiungi questa sezione -->
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>👥 Gestione Dipendenti</h5>
+    </div>
+    <div class="card-body">
+        <!-- Pulsante per aggiungere nuovo dipendente -->
+        <button class="btn btn-success mb-3" data-bs-toggle="modal" data-bs-target="#addUserModal">
+            ➕ Aggiungi Nuovo Dipendente
+        </button>
+        
+        <!-- Tabella utenti -->
+        <div class="table-responsive">
+            <table class="table table-hover" id="usersTable">
+                <thead>
+                    <tr>
+                        <th>Nome</th>
+                        <th>Email</th>
+                        <th>Ruolo</th>
+                        <th>Reparto</th>
+                        <th>Stato</th>
+                        <th>Azioni</th>
+                    </tr>
+                </thead>
+                <tbody id="usersTableBody">
+                    <!-- Gli utenti verranno caricati qui via JavaScript -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal per aggiungere utente -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">➕ Aggiungi Nuovo Dipendente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addUserForm">
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="newUserEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="newUserPassword" required>
+                        <small class="form-text text-muted">Minimo 6 caratteri</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nome Visualizzato</label>
+                        <input type="text" class="form-control" id="newUserName">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ruolo</label>
+                        <select class="form-select" id="newUserRole">
+                            <option value="employee">Dipendente</option>
+                            <option value="manager">Manager</option>
+                            <option value="admin">Amministratore</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reparto</label>
+                        <input type="text" class="form-control" id="newUserDepartment" 
+                               placeholder="Es: Vendite, Sviluppo, Marketing">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-primary" id="saveUserBtn">Salva Dipendente</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal per modificare utente -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">✏️ Modifica Dipendente</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editUserForm">
+                    <input type="hidden" id="editUserId">
+                    <div class="mb-3">
+                        <label class="form-label">Nome Visualizzato</label>
+                        <input type="text" class="form-control" id="editUserName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ruolo</label>
+                        <select class="form-select" id="editUserRole">
+                            <option value="employee">Dipendente</option>
+                            <option value="manager">Manager</option>
+                            <option value="admin">Amministratore</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Reparto</label>
+                        <input type="text" class="form-control" id="editUserDepartment">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Stato Account</label>
+                        <select class="form-select" id="editUserStatus">
+                            <option value="active">Attivo</option>
+                            <option value="disabled">Disabilitato</option>
+                        </select>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annulla</button>
+                <button type="button" class="btn btn-danger" id="resetPasswordBtn">🔐 Reset Password</button>
+                <button type="button" class="btn btn-primary" id="updateUserBtn">Aggiorna</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
     
     <!-- Scripts -->
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>

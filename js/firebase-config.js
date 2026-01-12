@@ -1,3 +1,4 @@
+// js/firebase-config.js
 const firebaseConfig = {
   apiKey: "AIzaSyDpZfX3g9HxtRaHG0nrmgdQnNA4ijevLXE",
   authDomain: "taskgariboldi.firebaseapp.com",
@@ -11,19 +12,3 @@ const firebaseConfig = {
 if (!firebase.apps.length) {
   firebase.initializeApp(firebaseConfig);
 }
-
-// Riferimenti ai servizi
-const auth = firebase.auth();
-const db = firebase.firestore();
-
-// Impostazioni Firestore
-db.settings({
-  cacheSizeBytes: firebase.firestore.CACHE_SIZE_UNLIMITED
-});
-
-// 🚫 RIMUOVI TUTTA QUESTA PARTE CHE FA SIGN OUT AUTOMATICO 🚫
-// NON fare clearPreviousSession() automaticamente
-
-// Esporta per uso globale
-window.auth = auth;
-window.db = db;
