@@ -1,76 +1,167 @@
-// js/auth.js - VERSIONE SEMPLIFICATA GRATUITA
-console.log('🔐 Auth semplice caricato');
+// js/auth.js - VERSIONE COMPLETA FIXATA
+console.log('🔐 Auth System v2.0 loaded');
 
 let currentUserData = null;
+let authStateUnsubscribe = null;
+let isInitialized = false;
 
-// Login semplice
-async function loginUser(email, password) {
+// ==================== SISTEMA CENTRALIZZATO ====================
+
+// Inizializza il sistema di autenticazione
+function initializeAuthSystem() {
+    if (isInitialized) {
+        console.log('⚠️ Auth system già inizializzato');
+        return;
+    }
+    
+    console.log('🔧 Inizializzazione sistema auth...');
+    
+    // Setup listener per cambiamenti di stato
+    setupAuthListener();
+    
+    // Controlla stato corrente
+    checkCurrentAuthState();
+    
+    isInitialized = true;
+    console.log('✅ Sistema auth inizializzato');
+}
+
+// Setup listener per auth state
+function setupAuthListener() {
+    // Rimuovi listener precedente se esiste
+    if (authStateUnsubscribe) {
+        console.log('🔄 Rimozione vecchio listener...');
+        authStateUnsubscribe();
+    }
+    
+    console.log('👂 Creazione nuovo auth listener...');
+    
+    // Crea nuovo listener
+    authStateUnsubscribe = firebase.auth().onAuthStateChanged(async (firebaseUser) => {
+        console.log('🔥 Auth state changed:', firebaseUser ? `User ${firebaseUser.email}` : 'No user');
+        
+        if (firebaseUser) {
+            await handleUserAuthenticated(firebaseUser);
+        } else {
+            handleUserLoggedOut();
+        }
+    });
+}
+
+// Gestisce utente autenticato
+async function handleUserAuthenticated(firebaseUser) {
     try {
-        showNotification('Accesso in corso...', 'info');
+        console.log('👤 Gestione utente autenticato:', firebaseUser.uid);
         
-        // 1. Login Firebase
-        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
-        const user = userCredential.user;
-        
-        console.log('✅ Login riuscito:', email);
-        
-        // 2. Ottieni ruolo da Firestore
+        // Ottieni dati utente da Firestore
         const userDoc = await firebase.firestore()
             .collection('users')
-            .doc(user.uid)
+            .doc(firebaseUser.uid)
             .get();
         
-        let role = 'employee';
-        let displayName = user.displayName || email.split('@')[0];
+        let userData = {};
         
         if (userDoc.exists) {
-            const data = userDoc.data();
-            role = data.role || 'employee';
-            displayName = data.displayName || displayName;
+            // Utente esiste in Firestore
+            userData = userDoc.data();
+            console.log('📄 Dati Firestore trovati');
+            
+            // Aggiorna lastLogin
+            await userDoc.ref.update({
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            });
         } else {
-            // Se non esiste documento, crea uno default
+            // Utente non esiste in Firestore - crea documento
+            console.log('📝 Creazione nuovo documento utente in Firestore');
+            
+            userData = {
+                email: firebaseUser.email,
+                displayName: firebaseUser.displayName || firebaseUser.email.split('@')[0],
+                role: 'employee',
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                lastLogin: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
             await firebase.firestore()
                 .collection('users')
-                .doc(user.uid)
-                .set({
-                    email: email,
-                    displayName: displayName,
-                    role: 'employee',
-                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    lastLogin: firebase.firestore.FieldValue.serverTimestamp()
-                });
+                .doc(firebaseUser.uid)
+                .set(userData);
         }
         
-        // Salva dati in sessionStorage
+        // Salva in memoria
         currentUserData = {
-            uid: user.uid,
-            email: email,
-            displayName: displayName,
-            role: role,
-            isAdmin: role === 'admin'
+            uid: firebaseUser.uid,
+            email: firebaseUser.email,
+            displayName: userData.displayName || firebaseUser.email.split('@')[0],
+            role: userData.role || 'employee',
+            isAdmin: (userData.role || 'employee') === 'admin'
         };
         
+        // Salva in sessionStorage
         sessionStorage.setItem('userData', JSON.stringify(currentUserData));
+        console.log('💾 Dati salvati in cache:', currentUserData.email);
         
-        showNotification(`Benvenuto ${displayName}!`, 'success');
-        
-        // Reindirizza
-setTimeout(() => {
-    if (role === 'admin') {
-        window.location.href = 'admin-dashboard.html';  // ← PER ADMIN
-    } else {
-        window.location.href = 'dashboard.html';         // ← PER DIPENDENTI
-    }
-}, 1500);
-        
-        return currentUserData;
+        // Se siamo su index.html, reindirizza
+        if (window.location.pathname.includes('index.html')) {
+            console.log('🔄 Reindirizzamento da login page...');
+            redirectBasedOnRole(currentUserData.role);
+        }
         
     } catch (error) {
-        console.error('❌ ERRORE LOGIN:', error);
+        console.error('❌ Errore gestione utente:', error);
+        showNotification('Errore caricamento dati utente', 'error');
+    }
+}
+
+// Gestisce logout utente
+function handleUserLoggedOut() {
+    console.log('👋 Utente disconnesso');
+    
+    // Pulisci dati
+    currentUserData = null;
+    sessionStorage.removeItem('userData');
+    
+    // Se siamo in una pagina protetta, reindirizza al login
+    if (isProtectedPage()) {
+        console.log('🚫 Pagina protetta senza login, redirect...');
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 500);
+    }
+}
+
+// ==================== FUNZIONI PRINCIPALI ====================
+
+// Login con email/password
+async function loginUser(email, password) {
+    try {
+        console.log('🔑 Tentativo login:', email);
+        showNotification('Accesso in corso...', 'info');
         
-        let errorMessage = 'Errore accesso';
-        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password') {
-            errorMessage = 'Email o password errati';
+        // Effettua login con Firebase
+        const userCredential = await firebase.auth().signInWithEmailAndPassword(email, password);
+        console.log('✅ Login Firebase completato');
+        
+        // Il listener onAuthStateChanged gestirà il resto
+        return userCredential.user;
+        
+    } catch (error) {
+        console.error('❌ Errore login:', error);
+        
+        let errorMessage = 'Errore durante il login';
+        switch (error.code) {
+            case 'auth/user-not-found':
+                errorMessage = 'Utente non trovato';
+                break;
+            case 'auth/wrong-password':
+                errorMessage = 'Password errata';
+                break;
+            case 'auth/too-many-requests':
+                errorMessage = 'Troppi tentativi, riprova più tardi';
+                break;
+            case 'auth/user-disabled':
+                errorMessage = 'Account disabilitato';
+                break;
         }
         
         showNotification(errorMessage, 'error');
@@ -78,83 +169,164 @@ setTimeout(() => {
     }
 }
 
-// Logout
+// Logout immediato
 async function logoutUser() {
     try {
-        await firebase.auth().signOut();
-        currentUserData = null;
-        sessionStorage.removeItem('userData');
+        console.log('🚪 Richiesta logout...');
+        showNotification('Disconnessione in corso...', 'info');
         
-        showNotification('Logout effettuato', 'success');
-        setTimeout(() => window.location.href = 'index.html', 1000);
+        // Rimuovi listener per evitare loop
+        if (authStateUnsubscribe) {
+            authStateUnsubscribe();
+            authStateUnsubscribe = null;
+        }
+        
+        // Effettua logout Firebase
+        await firebase.auth().signOut();
+        console.log('✅ Logout Firebase completato');
+        
+        // Pulisci cache
+        currentUserData = null;
+        sessionStorage.clear();
+        
+        // Reindirizza immediatamente
+        setTimeout(() => {
+            window.location.href = 'index.html';
+        }, 300);
         
     } catch (error) {
         console.error('❌ Errore logout:', error);
+        // Forza reindirizzamento comunque
+        window.location.href = 'index.html';
     }
 }
 
-// Controlla autenticazione
+// Verifica autenticazione per pagine protette
 async function checkAuth() {
-    return new Promise((resolve, reject) => {
-        firebase.auth().onAuthStateChanged(async (user) => {
-            if (!user) {
+    return new Promise((resolve) => {
+        const user = getCurrentUser();
+        const firebaseUser = firebase.auth().currentUser;
+        
+        if (user && firebaseUser) {
+            console.log('✅ Utente autenticato:', user.email);
+            resolve(user);
+        } else if (isProtectedPage() && !firebaseUser) {
+            console.log('❌ Pagina protetta senza autenticazione');
+            showNotification('Accesso richiesto', 'warning');
+            setTimeout(() => {
                 window.location.href = 'index.html';
-                reject('Utente non autenticato');
-                return;
-            }
-            
-            // Ottieni dati utente
-            const userDoc = await firebase.firestore()
-                .collection('users')
-                .doc(user.uid)
-                .get();
-            
-            const data = userDoc.exists ? userDoc.data() : {};
-            
-            currentUserData = {
-                uid: user.uid,
-                email: user.email,
-                displayName: data.displayName || user.displayName || user.email.split('@')[0],
-                role: data.role || 'employee',
-                isAdmin: data.role === 'admin'
-            };
-            
-            sessionStorage.setItem('userData', JSON.stringify(currentUserData));
-            
-            console.log('✅ Utente autenticato:', currentUserData.email, 'ruolo:', currentUserData.role);
-            resolve(currentUserData);
-        });
+            }, 1000);
+            resolve(null);
+        } else {
+            console.log('⚠️ Stato autenticazione: indeterminato');
+            resolve(null);
+        }
     });
 }
 
-// Funzioni helper
+// ==================== UTILITY FUNCTIONS ====================
+
+// Ottieni utente corrente
 function getCurrentUser() {
+    // Prima controlla in memoria
     if (currentUserData) return currentUserData;
     
-    const saved = sessionStorage.getItem('userData');
-    if (saved) {
-        currentUserData = JSON.parse(saved);
-        return currentUserData;
+    // Poi controlla sessionStorage
+    try {
+        const saved = sessionStorage.getItem('userData');
+        if (saved) {
+            currentUserData = JSON.parse(saved);
+            return currentUserData;
+        }
+    } catch (e) {
+        console.error('Errore lettura userData:', e);
     }
     
     return null;
 }
 
+// Controlla se è admin
 function isAdmin() {
     const user = getCurrentUser();
     return user ? user.role === 'admin' : false;
 }
 
-// Setup iniziale
+// Controlla se la pagina è protetta
+function isProtectedPage() {
+    const currentPage = window.location.pathname.split('/').pop();
+    const protectedPages = [
+        'dashboard.html',
+        'admin-dashboard.html',
+        'my-tasks.html',
+        'profile.html',
+        'add-task.html',
+        'admin-stats.html',
+        'admin-trash.html'
+    ];
+    
+    return protectedPages.includes(currentPage);
+}
+
+// Reindirizza in base al ruolo
+function redirectBasedOnRole(role) {
+    console.log('📍 Reindirizzamento per ruolo:', role);
+    
+    if (role === 'admin') {
+        window.location.href = 'admin-dashboard.html';
+    } else {
+        window.location.href = 'dashboard.html';
+    }
+}
+
+// Controlla stato auth corrente
+function checkCurrentAuthState() {
+    const firebaseUser = firebase.auth().currentUser;
+    const cachedUser = getCurrentUser();
+    
+    console.log('🔍 Controllo stato auth:');
+    console.log('  - Firebase user:', firebaseUser ? 'Presente' : 'Assente');
+    console.log('  - Cached user:', cachedUser ? 'Presente' : 'Assente');
+    
+    // Se c'è discrepanza, risincronizza
+    if (firebaseUser && !cachedUser) {
+        console.log('🔄 Sincronizzazione necessaria...');
+        handleUserAuthenticated(firebaseUser);
+    } else if (!firebaseUser && cachedUser) {
+        console.log('🔄 Pulizia cache...');
+        currentUserData = null;
+        sessionStorage.removeItem('userData');
+    }
+}
+
+// ==================== INIZIALIZZAZIONE ====================
+
+// Setup quando il DOM è pronto
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🔐 Sistema auth pronto');
+    console.log('📄 DOM caricato, inizializzazione auth...');
+    
+    // Aspetta che Firebase sia pronto
+    if (firebase.apps.length > 0) {
+        initializeAuthSystem();
+    } else {
+        console.warn('⚠️ Firebase non inizializzato, ritento...');
+        setTimeout(initializeAuthSystem, 1000);
+    }
 });
 
-// Esporta
+// Esporta funzioni globalmente
 window.auth = {
+    // Funzioni principali
     loginUser,
     logoutUser,
     checkAuth,
+    
+    // Utility
     getCurrentUser,
-    isAdmin
+    isAdmin,
+    
+    // Debug
+    _getCurrentUserData: () => currentUserData,
+    _forceLogout: logoutUser
 };
+
+console.log('✅ Auth System ready');

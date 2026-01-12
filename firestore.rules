@@ -1,26 +1,70 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Permetti lettura a tutti gli autenticati
+    
+    // Funzione helper: verifica se l'utente esiste in users
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+    
+    // Funzione helper: ottieni il ruolo dell'utente
+    function getUserRole() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role;
+    }
+    
+    // Funzione helper: verifica se è admin
+    function isAdmin() {
+      return userExists() && getUserRole() == "admin";
+    }
+    
+    // Regola base: tutti possono leggere se autenticati
     match /{document=**} {
       allow read: if request.auth != null;
     }
     
-    // Utenti: leggere tutti, scrivere solo admin
+    // COLLEZIONE: users
     match /users/{userId} {
       allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      
+      allow create: if request.auth != null && isAdmin();
+      
+      allow update: if request.auth != null && (
+        // Admin può modificare chiunque
+        isAdmin() ||
+        // Utente può modificare solo se stesso
+        (request.auth.uid == userId && userExists())
+      );
+      
+      allow delete: if request.auth != null && isAdmin();
     }
     
-    // Tasks: leggere e scrivere
+    // COLLEZIONE: tasks
     match /tasks/{taskId} {
       allow read: if request.auth != null;
-      allow create, update: if request.auth != null;
-      allow delete: if request.auth != null && 
-        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
-        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == "admin";
+      
+      allow create: if request.auth != null && (
+        // Admin può creare qualsiasi task
+        isAdmin() ||
+        // Dipendente può creare task per se stesso
+        (userExists() && request.resource.data.assignedTo == request.auth.uid)
+      );
+      
+      allow update: if request.auth != null && (
+        // Admin può modificare qualsiasi task
+        isAdmin() ||
+        // Assegnatario può modificare la task
+        resource.data.assignedTo == request.auth.uid ||
+        // Creatore può modificare la task
+        resource.data.createdBy == request.auth.uid
+      );
+      
+      allow delete: if request.auth != null && isAdmin();
+    }
+    
+    // COLLEZIONE: logs (se esiste)
+    match /logs/{logId} {
+      allow read: if request.auth != null && isAdmin();
+      allow write: if request.auth != null && isAdmin();
     }
   }
 }
