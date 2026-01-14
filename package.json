@@ -1,0 +1,14 @@
+{
+  "scripts": {
+    "dev": "vite --host --port 5173",
+    "build": "vite build",
+    "preview": "vite preview --port 4173"
+  },
+  "dependencies": {
+    "@vitejs/plugin-legacy": "^7.2.1",
+    "@vitejs/plugin-react": "^4.7.0",
+    "react": "^19.2.3",
+    "react-dom": "^19.2.3",
+    "react-router-dom": "^7.12.0"
+  }
+}

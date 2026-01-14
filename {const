@@ -1,0 +1,1 @@
+const fs = require('fs');const path = require('path');function updateImports(dir) {const files = fs.readdirSync(dir, { withFileTypes: true });files.forEach(file = fullPath = path.join(dir, file.name);if (file.isDirectory() 
