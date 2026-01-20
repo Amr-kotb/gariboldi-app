@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "taskgariboldi"
+  },
+  "targets": {
+    "taskgariboldi": {
+      "hosting": {
+        "taskgariboldi-app": [
+          "taskgariboldi"
+        ]
+      }
+    }
+  }
+}
