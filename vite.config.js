@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: '/', // IMPORTANTE: usa '/' per GitHub Pages
+  base: '/gariboldi-app/', // IMPORTANTE: usa '/' per GitHub Pages
   server: {
     port: 5173
   }
