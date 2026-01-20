@@ -1,13 +1,179 @@
 <!DOCTYPE html>
 <html lang="it">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Task Manager Pro</title>
-    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TaskG Debug</title>
+    <style>
+        /* Stili di base */
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif; 
+            background: #f0f0f0;
+        }
+        #root {
+            min-height: 100vh;
+            position: relative;
+        }
+        
+        /* Overlay di debug */
+        #debug-overlay {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 9999;
+            display: none;
+        }
+    </style>
+    
+    <!-- Script di debug pre-React -->
+    <script>
+        console.log('📜 Pre-React: HTML caricato');
+        
+        // Testa se gli eventi base funzionano
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('✅ DOMContentLoaded - Documento pronto');
+            
+            // Aggiungi listener a TUTTI i button
+            document.body.addEventListener('click', function(e) {
+                console.log('🖱️ [Global] Click su:', e.target.tagName, 
+                           'id:', e.target.id, 
+                           'class:', e.target.className);
+            });
+            
+            // Forza il focus
+            setTimeout(function() {
+                console.log('🔍 Controllo elementi cliccabili...');
+                const clickables = document.querySelectorAll('button, a, [onclick]');
+                console.log('🔍 Elementi cliccabili trovati:', clickables.length);
+                
+                clickables.forEach(el => {
+                    el.style.border = '2px solid #f00';
+                    setTimeout(() => el.style.border = '', 1000);
+                });
+            }, 1000);
+        });
+        
+        // Error handling globale
+        window.addEventListener('error', function(e) {
+            console.error('🌍 Global Error:', e.message, e.filename, e.lineno);
+        });
+    </script>
 </head>
 <body>
-    <div id="root"></div>
+    <div id="debug-overlay">
+        Debug Mode | Click anywhere
+    </div>
+    
+    <div id="root">
+        <div style="
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            text-align: center;
+        ">
+            <div>
+                <h1>TaskG</h1>
+                <div id="react-loader" style="
+                    width: 50px;
+                    height: 50px;
+                    border: 5px solid rgba(255,255,255,0.3);
+                    border-top-color: white;
+                    border-radius: 50%;
+                    margin: 20px auto;
+                    animation: spin 1s linear infinite;
+                "></div>
+                <p>Caricamento React...</p>
+                <button onclick="testPreReact()" style="
+                    padding: 10px 20px;
+                    background: white;
+                    color: #667eea;
+                    border: none;
+                    border-radius: 6px;
+                    margin-top: 20px;
+                    cursor: pointer;
+                ">
+                    Test Pre-React
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        function testPreReact() {
+            alert('✅ JavaScript PRE-React funziona!');
+            console.log('✅ Test pre-React completato');
+        }
+        
+        // Mostra overlay di debug
+        setTimeout(() => {
+            document.getElementById('debug-overlay').style.display = 'block';
+            document.getElementById('debug-overlay').textContent = 
+                'React: Caricamento... | ' + new Date().toLocaleTimeString();
+        }, 500);
+        
+        // Animation
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+    
+    <!-- Il nostro script principale -->
     <script type="module" src="/src/main.jsx"></script>
+    
+    <!-- Fallback se React non carica -->
+    <script>
+        setTimeout(() => {
+            const reactLoader = document.getElementById('react-loader');
+            if (reactLoader && reactLoader.style.animationPlayState !== 'paused') {
+                console.warn('⚠️ React non si è caricato dopo 5 secondi');
+                document.getElementById('root').innerHTML = `
+                    <div style="padding: 40px; text-align: center; color: white;">
+                        <h1>⚠️ React Non Caricato</h1>
+                        <p>Problemi di caricamento del modulo.</p>
+                        <button onclick="location.reload()" style="
+                            padding: 10px 20px;
+                            background: white;
+                            color: #667eea;
+                            border: none;
+                            border-radius: 6px;
+                            margin: 10px;
+                            cursor: pointer;
+                        ">
+                            Ricarica
+                        </button>
+                        <button onclick="testPreReact()" style="
+                            padding: 10px 20px;
+                            background: rgba(255,255,255,0.2);
+                            color: white;
+                            border: 1px solid white;
+                            border-radius: 6px;
+                            margin: 10px;
+                            cursor: pointer;
+                        ">
+                            Test JavaScript
+                        </button>
+                    </div>
+                `;
+            }
+        }, 5000);   
+    </script>
 </body>
 </html>

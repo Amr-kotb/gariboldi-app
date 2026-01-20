@@ -7,35 +7,40 @@
  * Route pubbliche (accessibili senza autenticazione)
  */
 
-export const ROUTES = {
-  HOME: '/',
-  LOGIN: '/login',
-  
-  ADMIN: {
-    ROOT: '/admin',
-    DASHBOARD: '/admin/dashboard',
-    TASKS: '/admin/tasks',
-    ASSIGN_TASK: '/admin/assign-task',
-    USERS: '/admin/users',
-    STATISTICS: '/admin/statistics',
-    HISTORY: '/admin/history',
-    TRASH: '/admin/trash'
-  },
-  
-  EMPLOYEE: {
-    ROOT: '/employee',
-    DASHBOARD: '/employee/dashboard',
-    MY_TASKS: '/employee/my-tasks',
-    HISTORY: '/employee/history',
-    PROFILE: '/employee/profile',
-    TRASH: '/employee/trash'
-  }
-};
+          export const ROUTES = {
+            // Pubbliche
+            HOME: '/',
+            LOGIN: '/login',
+            REGISTER: '/register',
+            FORGOT_PASSWORD: '/forgot-password',
+            
+            // Admin
+            ADMIN: {
+              ROOT: '/admin',
+              DASHBOARD: '/admin/dashboard',
+              TASKS: '/admin/tasks',
+              ASSIGN_TASK: '/admin/assign-task',
+              USERS: '/admin/users',
+              STATISTICS: '/admin/statistics',
+              HISTORY: '/admin/history',
+              TRASH: '/admin/trash'
+            },
+            
+            // Employee
+            EMPLOYEE: {
+              ROOT: '/employee',
+              DASHBOARD: '/employee/dashboard',
+              MY_TASKS: '/employee/my-tasks',
+              HISTORY: '/employee/history',
+              PROFILE: '/employee/profile',
+              TRASH: '/employee/trash'
+            }
+          };
 
-export const ROLES = {
-  ADMIN: 'admin',
-  EMPLOYEE: 'employee'
-};
+    export const ROLES = {
+      ADMIN: 'admin',
+      EMPLOYEE: 'dipendente'
+    };
 
 // IL RESTO DEL TUO CODICE ESISTENTE SEGUE QUI...
 export const PUBLIC_ROUTES = {
