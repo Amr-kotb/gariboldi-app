@@ -1,42 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../constants/routes';
-import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import Input from '../../components/forms/Input';
-import Select from '../../components/forms/Select';
-import DatePicker from '../../components/forms/DatePicker';
+import { useAuth } from '../../hooks/useAuth.jsx';
+import { useTasks, useUsers } from '../../hooks/useTasks.jsx';
 
 const AdminAssignTask = () => {
   const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
+  const { users, loadEmployees } = useUsers();
+  const { createTask } = useTasks();
+  
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     description: '',
     assignedTo: '',
-    priority: 'medium',
+    priority: 'media',
     dueDate: '',
-    status: 'pending'
+    status: 'assegnato'
   });
 
-  const mockUsers = [
-    { id: '1', name: 'Mario Rossi' },
-    { id: '2', name: 'Luigi Verdi' },
-    { id: '3', name: 'Anna Bianchi' },
-    { id: '4', name: 'Giulia Neri' }
-  ];
+  // Carica dipendenti REALI al mount
+  useEffect(() => {
+    loadEmployees();
+  }, []);
 
   const priorities = [
-    { value: 'low', label: '🟢 Bassa' },
-    { value: 'medium', label: '🟡 Media' },
-    { value: 'high', label: '🟠 Alta' },
-    { value: 'urgent', label: '🔴 Urgente' }
-  ];
-
-  const statuses = [
-    { value: 'pending', label: '⏳ In attesa' },
-    { value: 'in_progress', label: '🔄 In corso' },
-    { value: 'completed', label: '✅ Completato' }
+    { value: 'bassa', label: '🟢 Bassa' },
+    { value: 'media', label: '🟡 Media' },
+    { value: 'alta', label: '🟠 Alta' }
   ];
 
   const handleChange = (e) => {
@@ -44,57 +35,141 @@ const AdminAssignTask = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  // Array mock di utenti (solo per demo se users è vuoto)
+  const mockUsers = [
+    { id: '1', name: 'Andrea' },
+    { id: '2', name: 'Leonardo' },
+    { id: '3', name: 'Stefano' },
+    { id: '4', name: 'Domenico' }
+  ];
+
+  // Usa gli utenti reali se disponibili, altrimenti quelli mock
+  const displayUsers = users.length > 0 ? users : mockUsers;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     
-    console.log('Task da creare:', formData);
-    
-    // Simula invio
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    alert('✅ Task assegnato con successo!');
-    navigate(ROUTES.ADMIN.TASKS);
-    setLoading(false);
+    try {
+      // Trova il nome dell'utente assegnato
+      const assignedUser = displayUsers.find(u => u.id === formData.assignedTo);
+      
+      const taskData = {
+        title: formData.title,
+        description: formData.description,
+        assignedTo: formData.assignedTo,
+        assignedToName: assignedUser?.name || 'Sconosciuto',
+        priority: formData.priority,
+        status: formData.status,
+        progress: 0,
+        createdBy: currentUser.uid,
+        createdByName: currentUser.name,
+        dueDate: formData.dueDate ? new Date(formData.dueDate).toISOString() : null
+      };
+      
+      console.log('📝 [AssignTask] Creazione task:', taskData);
+      
+      const result = await createTask(taskData);
+      
+      if (result.success) {
+        alert('✅ Task assegnato con successo!');
+        navigate('/admin/tasks');
+      } else {
+        alert('❌ Errore: ' + result.error);
+      }
+      
+    } catch (error) {
+      console.error('❌ [AssignTask] Errore:', error);
+      alert('❌ Errore nella creazione del task');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="admin-assign-task" style={{ padding: '20px' }}>
-      <div className="page-header" style={{ marginBottom: '20px' }}>
-        <h1>📝 Assegna Nuovo Task</h1>
-        <p>Crea e assegna un nuovo task a un membro del team</p>
+    <div style={{ padding: '20px', maxWidth: '800px', margin: '0 auto' }}>
+      <div style={{ marginBottom: '20px' }}>
+        <h1 style={{ fontSize: '28px', color: '#1f2937', marginBottom: '10px' }}>
+          📝 Assegna Nuovo Task
+        </h1>
+        <p style={{ color: '#6b7280' }}>
+          Crea e assegna un nuovo task a un membro del team
+        </p>
       </div>
 
       <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-        <Button 
-          variant="outline" 
-          onClick={() => navigate(ROUTES.ADMIN.TASKS)}
+        <button 
+          onClick={() => navigate('/admin/tasks')}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: 'transparent',
+            color: '#6b7280',
+            border: '1px solid #d1d5db',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
         >
           ← Torna a Gestione Task
-        </Button>
+        </button>
         
-        <Button 
-          variant="outline" 
-          onClick={() => navigate(ROUTES.ADMIN.DASHBOARD)}
+        <button 
+          onClick={() => navigate('/admin/dashboard')}
+          style={{
+            padding: '8px 16px',
+            backgroundColor: 'transparent',
+            color: '#6b7280',
+            border: '1px solid #d1d5db',
+            borderRadius: '6px',
+            cursor: 'pointer'
+          }}
         >
           🏠 Dashboard
-        </Button>
+        </button>
       </div>
 
-      <Card>
-        <form onSubmit={handleSubmit} style={{ padding: '20px' }}>
-          <Input
-            label="Titolo Task"
-            name="title"
-            value={formData.title}
-            onChange={handleChange}
-            placeholder="Inserisci titolo del task"
-            required
-            disabled={loading}
-          />
+      <div style={{
+        backgroundColor: 'white',
+        padding: '30px',
+        borderRadius: '12px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+      }}>
+        <form onSubmit={handleSubmit}>
+          {/* Titolo */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              fontWeight: '500',
+              color: '#374151'
+            }}>
+              Titolo Task *
+            </label>
+            <input
+              type="text"
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
+              placeholder="Inserisci titolo del task"
+              required
+              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '16px'
+              }}
+            />
+          </div>
           
-          <div className="form-group" style={{ marginBottom: '15px' }}>
-            <label className="form-label" style={{ display: 'block', marginBottom: '5px', fontWeight: '500' }}>
+          {/* Descrizione */}
+          <div style={{ marginBottom: '20px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              fontWeight: '500',
+              color: '#374151'
+            }}>
               Descrizione
             </label>
             <textarea
@@ -104,89 +179,150 @@ const AdminAssignTask = () => {
               placeholder="Descrivi il task..."
               style={{
                 width: '100%',
-                padding: '10px',
-                border: '1px solid #ddd',
-                borderRadius: '4px',
-                minHeight: '100px'
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                minHeight: '100px',
+                fontSize: '16px'
               }}
               disabled={loading}
             />
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
-            <Select
-              label="Assegna a"
-              name="assignedTo"
-              value={formData.assignedTo}
-              onChange={handleChange}
-              options={mockUsers.map(user => ({ value: user.id, label: user.name }))}
-              placeholder="Seleziona dipendente"
-              required
-              disabled={loading}
-            />
+          {/* Assegna a & Priorità */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: '1fr 1fr', 
+            gap: '15px', 
+            marginBottom: '20px' 
+          }}>
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: '500',
+                color: '#374151'
+              }}>
+                Assegna a *
+              </label>
+              <select
+                name="assignedTo" 
+                value={formData.assignedTo}
+                onChange={handleChange}
+                required
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '16px'
+                }}
+              >
+                <option value="">Seleziona dipendente</option>
+                {displayUsers.map(user => (
+                  <option key={user.id} value={user.id}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+            </div>
             
-            <Select
-              label="Priorità"
-              name="priority"
-              value={formData.priority}
-              onChange={handleChange}
-              options={priorities}
-              required
-              disabled={loading}
-            />
+            <div>
+              <label style={{ 
+                display: 'block', 
+                marginBottom: '8px', 
+                fontWeight: '500',
+                color: '#374151'
+              }}>
+                Priorità *
+              </label>
+              <select
+                name="priority"
+                value={formData.priority}
+                onChange={handleChange}
+                required
+                disabled={loading}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '1px solid #d1d5db',
+                  borderRadius: '6px',
+                  fontSize: '16px'
+                }}
+              >
+                {priorities.map(priority => (
+                  <option key={priority.value} value={priority.value}>
+                    {priority.label}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
           
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '20px' }}>
-            <DatePicker
-              label="Scadenza"
+          {/* Scadenza */}
+          <div style={{ marginBottom: '30px' }}>
+            <label style={{ 
+              display: 'block', 
+              marginBottom: '8px', 
+              fontWeight: '500',
+              color: '#374151'
+            }}>
+              Scadenza
+            </label>
+            <input
+              type="date"
               name="dueDate"
               value={formData.dueDate}
               onChange={handleChange}
-              required
               disabled={loading}
-            />
-            
-            <Select
-              label="Stato iniziale"
-              name="status"
-              value={formData.status}
-              onChange={handleChange}
-              options={statuses}
-              required
-              disabled={loading}
+              style={{
+                width: '100%',
+                padding: '12px',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                fontSize: '16px'
+              }}
             />
           </div>
           
+          {/* Bottoni */}
           <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
-            <Button
+            <button
               type="button"
-              variant="outline"
-              onClick={() => navigate(ROUTES.ADMIN.TASKS)}
+              onClick={() => navigate('/admin/tasks')}
               disabled={loading}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: 'transparent',
+                color: '#6b7280',
+                border: '1px solid #d1d5db',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                fontSize: '16px'
+              }}
             >
               Annulla
-            </Button>
+            </button>
             
-            <Button
+            <button
               type="submit"
-              variant="primary"
-              loading={loading}
+              disabled={loading}
+              style={{
+                padding: '12px 24px',
+                backgroundColor: loading ? '#9ca3af' : '#3b82f6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: loading ? 'not-allowed' : 'pointer',
+                fontSize: '16px',
+                fontWeight: '600'
+              }}
             >
-              {loading ? 'Assegnazione in corso...' : 'Assegna Task'}
-            </Button>
+              {loading ? 'Creazione in corso...' : 'Assegna Task'}
+            </button>
           </div>
         </form>
-      </Card>
-
-      <div style={{ marginTop: '20px' }}>
-        <Card title="💡 Suggerimenti">
-          <ul style={{ margin: '10px 0', paddingLeft: '20px' }}>
-            <li>Scegli la priorità in base all'urgenza del task</li>
-            <li>Assegna task in base alle competenze del dipendente</li>
-            <li>Imposta scadenze realistiche</li>
-            <li>Fornisci una descrizione chiara e dettagliata</li>
-          </ul>
-        </Card>
       </div>
     </div>
   );
